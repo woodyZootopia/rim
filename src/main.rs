@@ -7,11 +7,15 @@ use termion::input::{MouseTerminal, TermRead};
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 
-// use std::env;
+use rim::Config;
+
+use std::env;
 use std::fs;
 
 fn main() {
-    let text = fs::read_to_string("test.txt").unwrap();
+    let config = Config::new(env::args()).unwrap();
+
+    let text = fs::read_to_string(config.filename).unwrap();
     let texts: Vec<&str> = text.lines().collect();
     let stdin = stdin();
     let mut stdout = AlternateScreen::from(MouseTerminal::from(stdout().into_raw_mode().unwrap()));
