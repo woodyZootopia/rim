@@ -35,25 +35,29 @@ pub mod util {
         state: State,
         stdin: Stdin,
         stdout: Box<dyn Write>,
+        text: Vec<Vec<char>>,
     }
 
     impl Buffer {
         pub fn new(config: Config) -> Buffer {
             let text = fs::read_to_string(config.filename).unwrap();
-            let texts: Vec<&str> = text.lines().collect();
+            let text: Vec<Vec<char>> = text.lines().map(|x| x.chars().collect()).collect();
             let stdin = stdin();
             let mut stdout =
                 AlternateScreen::from(MouseTerminal::from(stdout().into_raw_mode().unwrap()));
             write!(stdout, "{}", termion::clear::All).unwrap();
-            for (i, text) in texts.iter().enumerate() {
-                write!(stdout, "{}{}", termion::cursor::Goto(1, i as u16 + 1), text).unwrap();
-                stdout.flush().unwrap();
+            for (i, column) in text.iter().enumerate() {
+                for (j, ch) in column.iter().enumerate() {
+                    write!(stdout, "{}{}", termion::cursor::Goto(j as u16 + 1, i as u16 + 1), ch).unwrap();
+                    stdout.flush().unwrap();
+                }
             }
             Buffer {
                 cursor: Cursor { x: 0, y: 0 },
                 state: State::Normal,
                 stdin,
                 stdout: Box::new(stdout),
+                text,
             }
         }
 
@@ -63,14 +67,28 @@ pub mod util {
                 match evt {
                     Event::Key(kc) => match kc {
                         Key::Char('q') => break,
+                        Key::Char('h') => {
+                            if self.cursor.x >= 1 {
+                                self.cursor.x -= 1;
+                            }
+                        }
                         Key::Char('j') => {
                             self.cursor.y += 1;
+                        }
+                        Key::Char('k') => {
+                            if self.cursor.y >= 1 {
+                                self.cursor.y -= 1;
+                            }
+                        }
+                        Key::Char('l') => {
+                            self.cursor.x += 1;
                         }
                         _ => (),
                     },
                     Event::Mouse(me) => match me {
                         MouseEvent::Press(_, x, y) => {
-                            write!(self.stdout, "{}x", termion::cursor::Goto(x, y)).unwrap();
+                            write!(self.stdout, "{}x", termion::cursor::Goto(x, y))
+                                .unwrap();
                         }
                         _ => (),
                     },
@@ -79,7 +97,7 @@ pub mod util {
                 write!(
                     self.stdout,
                     "{}",
-                    termion::cursor::Goto(self.cursor.x as u16, self.cursor.y as u16)
+                    termion::cursor::Goto(self.cursor.x as u16 + 1, self.cursor.y as u16 + 1)
                 )
                 .unwrap();
                 self.stdout.flush().unwrap();
