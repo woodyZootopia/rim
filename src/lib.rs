@@ -48,7 +48,13 @@ pub mod util {
             write!(stdout, "{}", termion::clear::All).unwrap();
             for (i, column) in text.iter().enumerate() {
                 for (j, ch) in column.iter().enumerate() {
-                    write!(stdout, "{}{}", termion::cursor::Goto(j as u16 + 1, i as u16 + 1), ch).unwrap();
+                    write!(
+                        stdout,
+                        "{}{}",
+                        termion::cursor::Goto(j as u16 + 1, i as u16 + 1),
+                        ch
+                    )
+                    .unwrap();
                     stdout.flush().unwrap();
                 }
             }
@@ -73,7 +79,9 @@ pub mod util {
                             }
                         }
                         Key::Char('j') => {
-                            self.cursor.y += 1;
+                            if self.cursor.y + 1 < self.text.len() {
+                                self.cursor.y += 1;
+                            }
                         }
                         Key::Char('k') => {
                             if self.cursor.y >= 1 {
@@ -81,14 +89,15 @@ pub mod util {
                             }
                         }
                         Key::Char('l') => {
-                            self.cursor.x += 1;
+                            if self.cursor.x + 1 < self.text[self.cursor.y].len() {
+                                self.cursor.x += 1;
+                            }
                         }
                         _ => (),
                     },
                     Event::Mouse(me) => match me {
                         MouseEvent::Press(_, x, y) => {
-                            write!(self.stdout, "{}x", termion::cursor::Goto(x, y))
-                                .unwrap();
+                            write!(self.stdout, "{}x", termion::cursor::Goto(x, y)).unwrap();
                         }
                         _ => (),
                     },
