@@ -30,23 +30,18 @@ pub mod util {
         Normal,
         Insert,
     }
-    pub struct Buffer {
-        cursor: Cursor,
-        state: State,
-        stdin: Stdin,
-        stdout: Box<dyn Write>,
-        text: Vec<Vec<char>>,
+
+    type Text = Vec<Vec<char>>;
+
+    trait UpdateScreen {
+        fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>) -> ();
     }
 
-    impl Buffer {
-        pub fn new(config: Config) -> Buffer {
-            let text = fs::read_to_string(config.filename).unwrap();
-            let text: Vec<Vec<char>> = text.lines().map(|x| x.chars().collect()).collect();
-            let stdin = stdin();
-            let mut stdout =
-                AlternateScreen::from(MouseTerminal::from(stdout().into_raw_mode().unwrap()));
-            write!(stdout, "{}", termion::clear::All).unwrap();
-            for (i, column) in text.iter().enumerate() {
+    impl UpdateScreen for Text {
+        fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>) {
+            write!(stdout, "{}", termion::cursor::Goto(1, 1));
+            stdout.flush().unwrap();
+            for (i, column) in self.iter().enumerate() {
                 for (j, ch) in column.iter().enumerate() {
                     write!(
                         stdout,
@@ -57,20 +52,43 @@ pub mod util {
                     .unwrap();
                 }
             }
-            write!(stdout, "{}", termion::cursor::Goto(1, 1));
-            stdout.flush().unwrap();
+            stdout.flush();
+        }
+    }
+
+    pub struct Buffer {
+        cursor: Cursor,
+        state: State,
+        stdin: Stdin,
+        stdout: Box<dyn Write>,
+        text: Text,
+    }
+
+    impl Buffer {
+        pub fn new(config: Config) -> Buffer {
+            let text = fs::read_to_string(config.filename).unwrap();
+            let text: Vec<Vec<char>> = text.lines().map(|x| x.chars().collect()).collect();
+            let stdin = stdin();
+            let stdout =
+                AlternateScreen::from(MouseTerminal::from(stdout().into_raw_mode().unwrap()));
+            let mut stdout = Box::from(stdout);
+
+            write!(stdout, "{}", termion::clear::All).unwrap();
+
             Buffer {
                 cursor: Cursor { x: 0, y: 0 },
                 state: State::Normal,
                 stdin,
-                stdout: Box::new(stdout),
+                stdout,
                 text,
             }
         }
 
         pub fn buffer_loop(mut self) -> () {
+            self.text.rewrite_entire_screen(&mut self.stdout);
             for c in self.stdin.events() {
                 let evt = c.unwrap();
+                let mut flag_rewrite = false;
                 match evt {
                     Event::Key(kc) => match kc {
                         Key::Char('q') => break,
@@ -87,18 +105,30 @@ pub mod util {
                         Key::Char('k') => {
                             if self.cursor.y >= 1 {
                                 self.cursor.y -= 1;
+                                if self.cursor.x > self.text[self.cursor.y].len() {
+                                    self.cursor.x = self.text[self.cursor.y].len();
+                                }
                             }
                         }
                         Key::Char('l') => {
-                            if self.cursor.x + 1 < self.text[self.cursor.y].len() {
+                            if self.cursor.y < self.text.len()
+                                && self.cursor.x + 1 < self.text[self.cursor.y].len()
+                            {
                                 self.cursor.x += 1;
                             }
+                        }
+                        Key::Char('x') => {
+                            self.text[self.cursor.y].remove(self.cursor.x);
+                            flag_rewrite = true;
                         }
                         _ => (),
                     },
                     Event::Mouse(me) => match me {
                         MouseEvent::Press(_, x, y) => {
-                            write!(self.stdout, "{}x", termion::cursor::Goto(x, y)).unwrap();
+                            self.cursor = Cursor {
+                                x: x as usize - 1,
+                                y: y as usize - 1,
+                            };
                         }
                         _ => (),
                     },
@@ -110,7 +140,11 @@ pub mod util {
                     termion::cursor::Goto(self.cursor.x as u16 + 1, self.cursor.y as u16 + 1)
                 )
                 .unwrap();
-                self.stdout.flush().unwrap();
+                if flag_rewrite{
+                    self.text.rewrite_entire_screen(&mut self.stdout);
+                }else{
+                    self.stdout.flush();
+                }
             }
         }
     }
