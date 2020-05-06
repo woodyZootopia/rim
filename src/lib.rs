@@ -55,9 +55,10 @@ pub mod util {
                         ch
                     )
                     .unwrap();
-                    stdout.flush().unwrap();
                 }
             }
+            write!(stdout, "{}", termion::cursor::Goto(1, 1));
+            stdout.flush().unwrap();
             Buffer {
                 cursor: Cursor { x: 0, y: 0 },
                 state: State::Normal,
