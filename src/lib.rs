@@ -134,17 +134,16 @@ pub mod util {
                     },
                     _ => (),
                 }
+                if flag_rewrite {
+                    self.text.rewrite_entire_screen(&mut self.stdout);
+                }
                 write!(
                     self.stdout,
                     "{}",
                     termion::cursor::Goto(self.cursor.x as u16 + 1, self.cursor.y as u16 + 1)
                 )
                 .unwrap();
-                if flag_rewrite{
-                    self.text.rewrite_entire_screen(&mut self.stdout);
-                }else{
-                    self.stdout.flush();
-                }
+                self.stdout.flush();
             }
         }
     }
