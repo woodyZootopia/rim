@@ -39,8 +39,7 @@ pub mod util {
 
     impl UpdateScreen for Text {
         fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>) {
-            write!(stdout, "{}", termion::cursor::Goto(1, 1));
-            stdout.flush().unwrap();
+            write!(stdout, "{}", termion::clear::All).unwrap();
             for (i, column) in self.iter().enumerate() {
                 for (j, ch) in column.iter().enumerate() {
                     write!(
@@ -52,7 +51,8 @@ pub mod util {
                     .unwrap();
                 }
             }
-            stdout.flush();
+            write!(stdout, "{}", termion::cursor::Goto(1, 1)).unwrap();
+            stdout.flush().unwrap();
         }
     }
 
@@ -118,7 +118,9 @@ pub mod util {
                             }
                         }
                         Key::Char('x') => {
-                            self.text[self.cursor.y].remove(self.cursor.x);
+                            if self.text[self.cursor.y].len() >= 1 {
+                                self.text[self.cursor.y].remove(self.cursor.x);
+                            }
                             flag_rewrite = true;
                         }
                         _ => (),
