@@ -63,6 +63,7 @@ pub mod util {
     enum Mode {
         Normal,
         Insert,
+        Ex,
     }
 
     impl Buffer {
@@ -167,6 +168,9 @@ pub mod util {
                                 mode = Mode::Insert;
                                 flag_rewrite = true;
                             }
+                            Key::Char(':') => {
+                                mode = Mode::Ex;
+                            }
                             _ => (),
                         },
                         Event::Mouse(me) => match me {
@@ -196,7 +200,12 @@ pub mod util {
                         }
                         _ => (),
                     },
-                    Mode::Ex => (),
+                    Mode::Ex => match evt {
+                        Event::Key(Key::Esc) => {
+                            mode = Mode::Normal;
+                        }
+                        _ => (),
+                    },
                 }
                 if flag_rewrite {
                     self.text.rewrite_entire_screen(&mut self.stdout);
