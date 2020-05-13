@@ -26,10 +26,6 @@ pub mod util {
         x: usize,
         y: usize,
     }
-    enum State {
-        Normal,
-        Insert,
-    }
 
     type Text = Vec<Vec<char>>;
 
@@ -58,7 +54,6 @@ pub mod util {
 
     pub struct Buffer {
         cursor: Cursor,
-        state: State,
         stdin: Stdin,
         stdout: Box<dyn Write>,
         text: Text,
@@ -83,7 +78,6 @@ pub mod util {
 
             Buffer {
                 cursor: Cursor { x: 0, y: 0 },
-                state: State::Normal,
                 stdin,
                 stdout,
                 text,
@@ -128,20 +122,27 @@ pub mod util {
                                     self.cursor.x += 1;
                                 }
                             }
-                            // Key::Char('w') => {
-                            //     let mut has_seen_space = false;
-                            //     while true {
-                            //         match self.text[self.cursor.y][self.cursor.x] {
-                            //             'a'..='z'
-                            //                 if self.cursor.x + 1
-                            //                     < self.text[self.cursor.y].len() =>
-                            //             {
-                            //                 self.cursor.x += 1
-                            //             },
-                            //             _ => break,
-                            //         }
-                            //     }
-                            // }
+                            Key::Char('w') => {
+                                let mut has_seen_space = false;
+                                loop {
+                                    if self.cursor.x + 1 >= self.text[self.cursor.y].len() {
+                                        break;
+                                    }
+                                    match self.text[self.cursor.y][self.cursor.x] {
+                                        'a'..='z' => {
+                                            if has_seen_space {
+                                                break;
+                                            }
+                                            self.cursor.x += 1;
+                                        }
+                                        ' ' => {
+                                            has_seen_space = true;
+                                            self.cursor.x += 1;
+                                        }
+                                        _ => break,
+                                    }
+                                }
+                            }
                             Key::Char('x') => {
                                 if self.text[self.cursor.y].len() >= 1 {
                                     self.text[self.cursor.y].remove(self.cursor.x);
@@ -195,6 +196,7 @@ pub mod util {
                         }
                         _ => (),
                     },
+                    Mode::Ex => (),
                 }
                 if flag_rewrite {
                     self.text.rewrite_entire_screen(&mut self.stdout);
