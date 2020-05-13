@@ -145,7 +145,7 @@ pub mod util {
                     termion::cursor::Goto(self.cursor.x as u16 + 1, self.cursor.y as u16 + 1)
                 )
                 .unwrap();
-                self.stdout.flush();
+                self.stdout.flush().unwrap();
             }
         }
     }
