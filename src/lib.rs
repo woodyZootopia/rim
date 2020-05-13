@@ -148,6 +148,21 @@ pub mod util {
                             Key::Char('i') => {
                                 mode = Mode::Insert;
                             }
+                            Key::Char('a') => {
+                                self.cursor.x+=1;
+                                mode = Mode::Insert;
+                                flag_rewrite=true;
+                            }
+                            Key::Char('I') => {
+                                self.cursor.x=0;
+                                mode = Mode::Insert;
+                                flag_rewrite=true;
+                            }
+                            Key::Char('A') => {
+                                self.cursor.x=self.text[self.cursor.y].len();
+                                mode = Mode::Insert;
+                                flag_rewrite=true;
+                            }
                             _ => (),
                         },
                         Event::Mouse(me) => match me {
