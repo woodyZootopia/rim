@@ -108,6 +108,9 @@ pub mod util {
                             Key::Char('j') => {
                                 if self.cursor.y + 1 < self.text.len() {
                                     self.cursor.y += 1;
+                                    if self.cursor.x > self.text[self.cursor.y].len() {
+                                        self.cursor.x = self.text[self.cursor.y].len();
+                                    }
                                 }
                             }
                             Key::Char('k') => {
@@ -149,19 +152,19 @@ pub mod util {
                                 mode = Mode::Insert;
                             }
                             Key::Char('a') => {
-                                self.cursor.x+=1;
+                                self.cursor.x += 1;
                                 mode = Mode::Insert;
-                                flag_rewrite=true;
+                                flag_rewrite = true;
                             }
                             Key::Char('I') => {
-                                self.cursor.x=0;
+                                self.cursor.x = 0;
                                 mode = Mode::Insert;
-                                flag_rewrite=true;
+                                flag_rewrite = true;
                             }
                             Key::Char('A') => {
-                                self.cursor.x=self.text[self.cursor.y].len();
+                                self.cursor.x = self.text[self.cursor.y].len();
                                 mode = Mode::Insert;
-                                flag_rewrite=true;
+                                flag_rewrite = true;
                             }
                             _ => (),
                         },
@@ -182,13 +185,13 @@ pub mod util {
                         }
                         Event::Key(Key::Char(ch)) => {
                             self.text[self.cursor.y].insert(self.cursor.x, ch);
-                            self.cursor.x+=1;
-                            flag_rewrite=true;
+                            self.cursor.x += 1;
+                            flag_rewrite = true;
                         }
                         Event::Key(Key::Backspace) if self.cursor.x >= 1 => {
-                            self.text[self.cursor.y].remove(self.cursor.x-1);
-                            self.cursor.x-=1;
-                            flag_rewrite=true;
+                            self.text[self.cursor.y].remove(self.cursor.x - 1);
+                            self.cursor.x -= 1;
+                            flag_rewrite = true;
                         }
                         _ => (),
                     },
