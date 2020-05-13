@@ -64,6 +64,12 @@ pub mod util {
         text: Text,
     }
 
+    #[derive(Debug)]
+    enum Mode {
+        Normal,
+        Insert,
+    }
+
     impl Buffer {
         pub fn new(config: Config) -> Buffer {
             let text = fs::read_to_string(config.filename).unwrap();
@@ -86,55 +92,86 @@ pub mod util {
 
         pub fn buffer_loop(mut self) -> () {
             self.text.rewrite_entire_screen(&mut self.stdout);
+            let mut mode = Mode::Normal;
             for c in self.stdin.events() {
                 let evt = c.unwrap();
                 let mut flag_rewrite = false;
-                match evt {
-                    Event::Key(kc) => match kc {
-                        Key::Char('q') => break,
-                        Key::Char('h') => {
-                            if self.cursor.x >= 1 {
-                                self.cursor.x -= 1;
-                            }
-                        }
-                        Key::Char('j') => {
-                            if self.cursor.y + 1 < self.text.len() {
-                                self.cursor.y += 1;
-                            }
-                        }
-                        Key::Char('k') => {
-                            if self.cursor.y >= 1 {
-                                self.cursor.y -= 1;
-                                if self.cursor.x > self.text[self.cursor.y].len() {
-                                    self.cursor.x = self.text[self.cursor.y].len();
+                match mode {
+                    Mode::Normal => match evt {
+                        Event::Key(kc) => match kc {
+                            Key::Char('q') => break,
+                            Key::Char('h') => {
+                                if self.cursor.x >= 1 {
+                                    self.cursor.x -= 1;
                                 }
                             }
-                        }
-                        Key::Char('l') => {
-                            if self.cursor.y < self.text.len()
-                                && self.cursor.x + 1 < self.text[self.cursor.y].len()
-                            {
-                                self.cursor.x += 1;
+                            Key::Char('j') => {
+                                if self.cursor.y + 1 < self.text.len() {
+                                    self.cursor.y += 1;
+                                }
                             }
-                        }
-                        Key::Char('x') => {
-                            if self.text[self.cursor.y].len() >= 1 {
-                                self.text[self.cursor.y].remove(self.cursor.x);
+                            Key::Char('k') => {
+                                if self.cursor.y >= 1 {
+                                    self.cursor.y -= 1;
+                                    if self.cursor.x > self.text[self.cursor.y].len() {
+                                        self.cursor.x = self.text[self.cursor.y].len();
+                                    }
+                                }
                             }
-                            flag_rewrite = true;
+                            Key::Char('l') => {
+                                if self.cursor.y < self.text.len()
+                                    && self.cursor.x + 1 < self.text[self.cursor.y].len()
+                                {
+                                    self.cursor.x += 1;
+                                }
+                            }
+                            // Key::Char('w') => {
+                            //     let mut has_seen_space = false;
+                            //     while true {
+                            //         match self.text[self.cursor.y][self.cursor.x] {
+                            //             'a'..='z'
+                            //                 if self.cursor.x + 1
+                            //                     < self.text[self.cursor.y].len() =>
+                            //             {
+                            //                 self.cursor.x += 1
+                            //             },
+                            //             _ => break,
+                            //         }
+                            //     }
+                            // }
+                            Key::Char('x') => {
+                                if self.text[self.cursor.y].len() >= 1 {
+                                    self.text[self.cursor.y].remove(self.cursor.x);
+                                }
+                                flag_rewrite = true;
+                            }
+                            Key::Char('i') => {
+                                mode = Mode::Insert;
+                            }
+                            _ => (),
+                        },
+                        Event::Mouse(me) => match me {
+                            MouseEvent::Press(_, x, y) => {
+                                self.cursor = Cursor {
+                                    x: x as usize - 1,
+                                    y: y as usize - 1,
+                                };
+                            }
+                            _ => (),
+                        },
+                        _ => (),
+                    },
+                    Mode::Insert => match evt {
+                        Event::Key(Key::Esc) => {
+                            mode = Mode::Normal;
+                        }
+                        Event::Key(Key::Char(ch)) => {
+                            self.text[self.cursor.y].insert(self.cursor.x, ch);
+                            self.cursor.x+=1;
+                            flag_rewrite=true;
                         }
                         _ => (),
                     },
-                    Event::Mouse(me) => match me {
-                        MouseEvent::Press(_, x, y) => {
-                            self.cursor = Cursor {
-                                x: x as usize - 1,
-                                y: y as usize - 1,
-                            };
-                        }
-                        _ => (),
-                    },
-                    _ => (),
                 }
                 if flag_rewrite {
                     self.text.rewrite_entire_screen(&mut self.stdout);
