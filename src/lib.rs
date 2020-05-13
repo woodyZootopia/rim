@@ -170,6 +170,11 @@ pub mod util {
                             self.cursor.x+=1;
                             flag_rewrite=true;
                         }
+                        Event::Key(Key::Backspace) if self.cursor.x >= 1 => {
+                            self.text[self.cursor.y].remove(self.cursor.x-1);
+                            self.cursor.x-=1;
+                            flag_rewrite=true;
+                        }
                         _ => (),
                     },
                 }
