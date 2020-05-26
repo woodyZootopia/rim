@@ -52,7 +52,7 @@ pub mod util {
         }
     }
 
-    pub struct Buffer {
+    pub struct Editor {
         cursor: Cursor,
         stdin: Stdin,
         stdout: Box<dyn Write>,
@@ -66,8 +66,8 @@ pub mod util {
         Ex,
     }
 
-    impl Buffer {
-        pub fn new(config: Config) -> Buffer {
+    impl Editor {
+        pub fn new(config: Config) -> Editor {
             let text = fs::read_to_string(config.filename).unwrap();
             let text: Vec<Vec<char>> = text.lines().map(|x| x.chars().collect()).collect();
             let stdin = stdin();
@@ -77,7 +77,7 @@ pub mod util {
 
             write!(stdout, "{}", termion::clear::All).unwrap();
 
-            Buffer {
+            Editor {
                 cursor: Cursor { x: 0, y: 0 },
                 stdin,
                 stdout,
@@ -85,7 +85,7 @@ pub mod util {
             }
         }
 
-        pub fn buffer_loop(mut self) -> () {
+        pub fn editor_loop(mut self) -> () {
             self.text.rewrite_entire_screen(&mut self.stdout);
             let mut mode = Mode::Normal;
             for c in self.stdin.events() {

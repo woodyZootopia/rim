@@ -7,7 +7,7 @@ use std::env;
 fn main() {
     let config = Config::new(env::args()).unwrap();
 
-    let buf = Buffer::new(config);
-    buf.buffer_loop();
+    let editor = Editor::new(config);
+    editor.editor_loop();
 
 }
