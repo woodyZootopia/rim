@@ -147,6 +147,9 @@ pub mod util {
                             Key::Char('x') => {
                                 if self.text[self.cursor.y].len() >= 1 {
                                     self.text[self.cursor.y].remove(self.cursor.x);
+                                    if self.cursor.x >= self.text[self.cursor.y].len() && self.cursor.x>0 {
+                                        self.cursor.x -= 1;
+                                    }
                                 }
                                 flag_rewrite = true;
                             }
