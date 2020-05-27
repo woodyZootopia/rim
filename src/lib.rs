@@ -31,6 +31,7 @@ pub mod util {
 
     trait UpdateScreen {
         fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>) -> ();
+        fn rewrite_single_line(&self, stdout: &mut Box<dyn Write>, line_to_rewrite: usize) -> ();
     }
 
     impl UpdateScreen for Text {
@@ -49,6 +50,26 @@ pub mod util {
             }
             write!(stdout, "{}", termion::cursor::Goto(1, 1)).unwrap();
             stdout.flush().unwrap();
+        }
+        fn rewrite_single_line(&self, stdout: &mut Box<dyn Write>, line_to_rewrite: usize) {
+            let column = self.iter().collect::<Vec<&Vec<char>>>()[line_to_rewrite];
+            write!(
+                stdout,
+                "{}{}",
+                termion::cursor::Goto(0, line_to_rewrite as u16 + 1),
+                termion::clear::CurrentLine
+            )
+            .unwrap();
+            for (j, ch) in column.iter().enumerate() {
+                write!(
+                    stdout,
+                    "{}{}",
+                    termion::cursor::Goto(j as u16 + 1, line_to_rewrite as u16 + 1),
+                    ch
+                )
+                .unwrap();
+            }
+            return;
         }
     }
 
@@ -90,7 +111,8 @@ pub mod util {
             let mut mode = Mode::Normal;
             for c in self.stdin.events() {
                 let evt = c.unwrap();
-                let mut flag_rewrite = false;
+                let mut line_to_rewrite: Option<usize> = None;
+                let mut flag_rewrite_all = false;
                 match mode {
                     Mode::Normal => match evt {
                         Event::Key(kc) => match kc {
@@ -147,11 +169,13 @@ pub mod util {
                             Key::Char('x') => {
                                 if self.text[self.cursor.y].len() >= 1 {
                                     self.text[self.cursor.y].remove(self.cursor.x);
-                                    if self.cursor.x >= self.text[self.cursor.y].len() && self.cursor.x>0 {
+                                    if self.cursor.x >= self.text[self.cursor.y].len()
+                                        && self.cursor.x > 0
+                                    {
                                         self.cursor.x -= 1;
                                     }
                                 }
-                                flag_rewrite = true;
+                                line_to_rewrite = Some(self.cursor.y);
                             }
                             Key::Char('i') => {
                                 mode = Mode::Insert;
@@ -159,17 +183,17 @@ pub mod util {
                             Key::Char('a') => {
                                 self.cursor.x += 1;
                                 mode = Mode::Insert;
-                                flag_rewrite = true;
+                                line_to_rewrite = Some(self.cursor.y);
                             }
                             Key::Char('I') => {
                                 self.cursor.x = 0;
                                 mode = Mode::Insert;
-                                flag_rewrite = true;
+                                line_to_rewrite = Some(self.cursor.y);
                             }
                             Key::Char('A') => {
                                 self.cursor.x = self.text[self.cursor.y].len();
                                 mode = Mode::Insert;
-                                flag_rewrite = true;
+                                line_to_rewrite = Some(self.cursor.y);
                             }
                             Key::Char(':') => {
                                 mode = Mode::Ex;
@@ -194,12 +218,12 @@ pub mod util {
                         Event::Key(Key::Char(ch)) => {
                             self.text[self.cursor.y].insert(self.cursor.x, ch);
                             self.cursor.x += 1;
-                            flag_rewrite = true;
+                            line_to_rewrite = Some(self.cursor.y);
                         }
                         Event::Key(Key::Backspace) if self.cursor.x >= 1 => {
                             self.text[self.cursor.y].remove(self.cursor.x - 1);
                             self.cursor.x -= 1;
-                            flag_rewrite = true;
+                            line_to_rewrite = Some(self.cursor.y);
                         }
                         _ => (),
                     },
@@ -210,8 +234,12 @@ pub mod util {
                         _ => (),
                     },
                 }
-                if flag_rewrite {
+                if flag_rewrite_all {
                     self.text.rewrite_entire_screen(&mut self.stdout);
+                }
+                match line_to_rewrite {
+                    Some(line) => self.text.rewrite_single_line(&mut self.stdout, line),
+                    None => (),
                 }
                 write!(
                     self.stdout,
