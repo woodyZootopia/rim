@@ -32,60 +32,64 @@ pub mod util {
     type Text = Vec<Vec<char>>;
 
     trait UpdateScreen {
-        fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>) -> ();
-        fn rewrite_single_line(&self, stdout: &mut Box<dyn Write>, line_to_rewrite: usize) -> ();
+        fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>, row_offset: usize) -> ();
+        fn rewrite_single_line(
+            &self,
+            stdout: &mut Box<dyn Write>,
+            line_to_rewrite: usize,
+            row_offset: usize,
+        ) -> ();
     }
 
     impl UpdateScreen for Text {
-        fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>) {
+        fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>, row_offset: usize) {
             write!(stdout, "{}", termion::clear::All).unwrap();
             let num_of_column = self.len();
-            for (i, column) in self
-                [0..cmp::min(termion::terminal_size().unwrap().1 as usize, num_of_column)]
+            for (i, column) in self[row_offset
+                ..cmp::min(
+                    termion::terminal_size().unwrap().1 as usize + row_offset,
+                    num_of_column,
+                )]
                 .iter()
                 .enumerate()
             {
                 let len_line = column.len();
-                for (j, ch) in column
-                    [0..cmp::min(termion::terminal_size().unwrap().0 as usize, len_line)]
-                    .iter()
-                    .enumerate()
-                {
-                    write!(
-                        stdout,
-                        "{}{}",
-                        termion::cursor::Goto(j as u16 + 1, i as u16 + 1),
-                        ch
-                    )
-                    .unwrap();
-                }
+                write!(
+                    stdout,
+                    "{}{}",
+                    termion::cursor::Goto(0, i as u16 + 1),
+                    column.iter().collect::<String>()
+                );
             }
             write!(stdout, "{}", termion::cursor::Goto(1, 1)).unwrap();
             stdout.flush().unwrap();
         }
-        fn rewrite_single_line(&self, stdout: &mut Box<dyn Write>, line_to_rewrite: usize) {
+        fn rewrite_single_line(
+            &self,
+            stdout: &mut Box<dyn Write>,
+            line_to_rewrite: usize,
+            row_offset: usize,
+        ) {
             let column = self.iter().collect::<Vec<&Vec<char>>>()[line_to_rewrite];
             write!(
                 stdout,
                 "{}{}",
-                termion::cursor::Goto(0, line_to_rewrite as u16 + 1),
+                termion::cursor::Goto(0, line_to_rewrite as u16 + row_offset as u16 + 1),
                 termion::clear::CurrentLine
             )
             .unwrap();
-            for (j, ch) in column.iter().enumerate() {
-                write!(
-                    stdout,
-                    "{}{}",
-                    termion::cursor::Goto(j as u16 + 1, line_to_rewrite as u16 + 1),
-                    ch
-                )
-                .unwrap();
-            }
+            write!(
+                stdout,
+                "{}{}",
+                termion::cursor::Goto(0, line_to_rewrite as u16 - row_offset as u16 + 1),
+                column.iter().collect::<String>()
+            )
+            .unwrap();
             return;
         }
     }
 
-    pub struct Editor {
+    pub struct EditorState {
         cursor: Cursor,
         stdin: Stdin,
         stdout: Box<dyn Write>,
@@ -99,8 +103,8 @@ pub mod util {
         Ex,
     }
 
-    impl Editor {
-        pub fn new(config: Config) -> Editor {
+    impl EditorState {
+        pub fn new(config: Config) -> EditorState {
             let text = fs::read_to_string(config.filename).unwrap();
             let text: Vec<Vec<char>> = text.lines().map(|x| x.chars().collect()).collect();
             let stdin = stdin();
@@ -110,7 +114,7 @@ pub mod util {
 
             write!(stdout, "{}", termion::clear::All).unwrap();
 
-            Editor {
+            EditorState {
                 cursor: Cursor { x: 0, y: 0 },
                 stdin,
                 stdout,
@@ -119,8 +123,9 @@ pub mod util {
         }
 
         pub fn editor_loop(mut self) -> () {
-            self.text.rewrite_entire_screen(&mut self.stdout);
+            self.text.rewrite_entire_screen(&mut self.stdout, 0);
             let mut mode = Mode::Normal;
+            let mut row_offset = 0;
             for c in self.stdin.events() {
                 let evt = c.unwrap();
                 let mut line_to_rewrite: Option<usize> = None;
@@ -135,6 +140,11 @@ pub mod util {
                                 }
                             }
                             Key::Char('j') => {
+                                if self.cursor.y + row_offset + 1 > termion::terminal_size().unwrap().1 as usize
+                                {
+                                    row_offset += 1;
+                                    flag_rewrite_all = true;
+                                }
                                 if self.cursor.y + 1 < self.text.len() {
                                     self.cursor.y += 1;
                                     if self.cursor.x > self.text[self.cursor.y].len() {
@@ -247,10 +257,13 @@ pub mod util {
                     },
                 }
                 if flag_rewrite_all {
-                    self.text.rewrite_entire_screen(&mut self.stdout);
+                    self.text
+                        .rewrite_entire_screen(&mut self.stdout, row_offset);
                 }
                 match line_to_rewrite {
-                    Some(line) => self.text.rewrite_single_line(&mut self.stdout, line),
+                    Some(line) => self
+                        .text
+                        .rewrite_single_line(&mut self.stdout, line, row_offset),
                     None => (),
                 }
                 write!(
