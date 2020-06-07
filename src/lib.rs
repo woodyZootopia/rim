@@ -14,9 +14,11 @@ impl Config {
 }
 pub mod util {
     use super::Config;
+    use std::cmp;
     use std::fs;
     use std::io::{stdin, stdout, Stdin, Stdout, Write};
     // use termion::color;
+    use termion;
     use termion::event::{Event, Key, MouseEvent};
     use termion::input::{MouseTerminal, TermRead};
     use termion::raw::IntoRawMode;
@@ -37,8 +39,18 @@ pub mod util {
     impl UpdateScreen for Text {
         fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>) {
             write!(stdout, "{}", termion::clear::All).unwrap();
-            for (i, column) in self.iter().enumerate() {
-                for (j, ch) in column.iter().enumerate() {
+            let num_of_column = self.len();
+            for (i, column) in self
+                [0..cmp::min(termion::terminal_size().unwrap().1 as usize, num_of_column)]
+                .iter()
+                .enumerate()
+            {
+                let len_line = column.len();
+                for (j, ch) in column
+                    [0..cmp::min(termion::terminal_size().unwrap().0 as usize, len_line)]
+                    .iter()
+                    .enumerate()
+                {
                     write!(
                         stdout,
                         "{}{}",
