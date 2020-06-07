@@ -7,7 +7,7 @@ use std::env;
 fn main() {
     let config = Config::new(env::args()).unwrap();
 
-    let editor = Editor::new(config);
+    let editor = EditorState::new(config);
     editor.editor_loop();
 
 }

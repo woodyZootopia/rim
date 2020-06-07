@@ -140,21 +140,28 @@ pub mod util {
                                 }
                             }
                             Key::Char('j') => {
-                                if self.cursor.y + row_offset + 1 > termion::terminal_size().unwrap().1 as usize
-                                {
-                                    row_offset += 1;
-                                    flag_rewrite_all = true;
-                                }
-                                if self.cursor.y + 1 < self.text.len() {
+                                if self.cursor.y + row_offset + 1 < self.text.len() {
                                     self.cursor.y += 1;
                                     if self.cursor.x > self.text[self.cursor.y].len() {
                                         self.cursor.x = self.text[self.cursor.y].len();
                                     }
+                                    if self.cursor.y + 1
+                                        > termion::terminal_size().unwrap().1 as usize
+                                    {
+                                        self.cursor.y -= 1;
+                                        row_offset += 1;
+                                        flag_rewrite_all = true;
+                                    }
                                 }
                             }
                             Key::Char('k') => {
-                                if self.cursor.y >= 1 {
-                                    self.cursor.y -= 1;
+                                if self.cursor.y + row_offset >= 1 {
+                                    if self.cursor.y == 0 {
+                                        row_offset -= 1;
+                                        flag_rewrite_all = true;
+                                    } else {
+                                        self.cursor.y -= 1;
+                                    }
                                     if self.cursor.x > self.text[self.cursor.y].len() {
                                         self.cursor.x = self.text[self.cursor.y].len();
                                     }
