@@ -53,13 +53,13 @@ pub mod util {
                 .iter()
                 .enumerate()
             {
-                let len_line = column.len();
                 write!(
                     stdout,
                     "{}{}",
                     termion::cursor::Goto(0, i as u16 + 1),
                     column.iter().collect::<String>()
-                );
+                )
+                .unwrap();
             }
             write!(stdout, "{}", termion::cursor::Goto(1, 1)).unwrap();
             stdout.flush().unwrap();
