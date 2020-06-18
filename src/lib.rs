@@ -29,9 +29,10 @@ pub mod util {
             stdout,
             "{}",
             termion::cursor::Goto(0, termion::terminal_size().unwrap().1)
-        );
+        )
+        .unwrap();
         for item in args {
-            write!(stdout, "{}, ", item);
+            write!(stdout, "{}, ", item).unwrap();
         }
     }
 
@@ -102,11 +103,11 @@ pub mod util {
     pub struct EditorState {
         screen: ScreenState,
         io: IO,
+        text: Text,
     }
 
     pub struct ScreenState {
         cursor: Cursor,
-        text: Text,
         row_offset: usize,
     }
 
@@ -146,9 +147,9 @@ pub mod util {
             write!(stdout, "{}", termion::clear::All).unwrap();
 
             EditorState {
+                text,
                 screen: ScreenState {
                     cursor: Cursor { x: 0, y: 0 },
-                    text,
                     row_offset: 0,
                 },
                 io: IO { stdin, stdout },
@@ -156,9 +157,7 @@ pub mod util {
         }
 
         pub fn editor_loop(mut self) -> () {
-            self.screen
-                .text
-                .rewrite_entire_screen(&mut self.io.stdout, 0);
+            self.text.rewrite_entire_screen(&mut self.io.stdout, 0);
             let mut mode = Mode::Normal;
             for c in self.io.stdin.events() {
                 let evt = c.unwrap();
@@ -176,15 +175,15 @@ pub mod util {
                                 }
                                 'j' => {
                                     if self.screen.cursor.y + self.screen.row_offset + 1
-                                        < self.screen.text.len()
+                                        < self.text.len()
                                     {
                                         self.screen.cursor.y += 1;
                                         if self.screen.cursor.x
-                                            > self.screen.text
+                                            > self.text
                                                 [self.screen.cursor.y + self.screen.row_offset]
                                                 .len()
                                         {
-                                            self.screen.cursor.x = self.screen.text
+                                            self.screen.cursor.x = self.text
                                                 [self.screen.cursor.y + self.screen.row_offset]
                                                 .len();
                                         }
@@ -206,11 +205,11 @@ pub mod util {
                                             self.screen.cursor.y -= 1;
                                         }
                                         if self.screen.cursor.x
-                                            >= self.screen.text
+                                            >= self.text
                                                 [self.screen.cursor.y + self.screen.row_offset]
                                                 .len()
                                         {
-                                            self.screen.cursor.x = self.screen.text
+                                            self.screen.cursor.x = self.text
                                                 [self.screen.cursor.y + self.screen.row_offset]
                                                 .len();
                                         }
@@ -218,9 +217,9 @@ pub mod util {
                                 }
                                 'l' => {
                                     if self.screen.cursor.y + self.screen.row_offset
-                                        < self.screen.text.len()
+                                        < self.text.len()
                                         && self.screen.cursor.x + 1
-                                            < self.screen.text
+                                            < self.text
                                                 [self.screen.cursor.y + self.screen.row_offset]
                                                 .len()
                                     {
@@ -231,13 +230,13 @@ pub mod util {
                                     let mut has_seen_space = false;
                                     loop {
                                         if self.screen.cursor.x + 1
-                                            >= self.screen.text
+                                            >= self.text
                                                 [self.screen.cursor.y + self.screen.row_offset]
                                                 .len()
                                         {
                                             break;
                                         }
-                                        match self.screen.text
+                                        match self.text
                                             [self.screen.cursor.y + self.screen.row_offset]
                                             [self.screen.cursor.x]
                                         {
@@ -256,16 +255,14 @@ pub mod util {
                                     }
                                 }
                                 'x' => {
-                                    if self.screen.text
-                                        [self.screen.cursor.y + self.screen.row_offset]
+                                    if self.text[self.screen.cursor.y + self.screen.row_offset]
                                         .len()
                                         >= 1
                                     {
-                                        self.screen.text
-                                            [self.screen.cursor.y + self.screen.row_offset]
+                                        self.text[self.screen.cursor.y + self.screen.row_offset]
                                             .remove(self.screen.cursor.x);
                                         if self.screen.cursor.x
-                                            >= self.screen.text
+                                            >= self.text
                                                 [self.screen.cursor.y + self.screen.row_offset]
                                                 .len()
                                             && self.screen.cursor.x > 0
@@ -289,7 +286,7 @@ pub mod util {
                                     line_to_rewrite = Some(self.screen.cursor.y);
                                 }
                                 'A' => {
-                                    self.screen.cursor.x = self.screen.text
+                                    self.screen.cursor.x = self.text
                                         [self.screen.cursor.y + self.screen.row_offset]
                                         .len();
                                     mode = Mode::Insert;
@@ -322,13 +319,13 @@ pub mod util {
                             mode = Mode::Normal;
                         }
                         Event::Key(Key::Char(ch)) => {
-                            self.screen.text[self.screen.cursor.y + self.screen.row_offset]
+                            self.text[self.screen.cursor.y + self.screen.row_offset]
                                 .insert(self.screen.cursor.x, ch);
                             self.screen.cursor.x += 1;
                             line_to_rewrite = Some(self.screen.cursor.y);
                         }
                         Event::Key(Key::Backspace) if self.screen.cursor.x >= 1 => {
-                            self.screen.text[self.screen.cursor.y + self.screen.row_offset]
+                            self.text[self.screen.cursor.y + self.screen.row_offset]
                                 .remove(self.screen.cursor.x - 1);
                             self.screen.cursor.x -= 1;
                             line_to_rewrite = Some(self.screen.cursor.y);
@@ -343,12 +340,11 @@ pub mod util {
                     },
                 }
                 if flag_rewrite_all {
-                    self.screen
-                        .text
+                    self.text
                         .rewrite_entire_screen(&mut self.io.stdout, self.screen.row_offset);
                 }
                 match line_to_rewrite {
-                    Some(line) => self.screen.text.rewrite_single_line(
+                    Some(line) => self.text.rewrite_single_line(
                         &mut self.io.stdout,
                         line,
                         self.screen.row_offset,
