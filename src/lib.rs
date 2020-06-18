@@ -101,13 +101,7 @@ pub mod util {
                 termion::clear::CurrentLine
             )
             .unwrap();
-            write!(
-                stdout,
-                "{}{}",
-                termion::cursor::Goto(0, line_to_rewrite as u16 + 1),
-                column.iter().collect::<String>()
-            )
-            .unwrap();
+            write!(stdout, "{}", column.iter().collect::<String>()).unwrap();
             return;
         }
     }
