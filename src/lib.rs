@@ -174,7 +174,7 @@ pub mod util {
                 let evt = c.unwrap();
                 let mut line_to_rewrite: Option<usize> = None;
                 let mut flag_rewrite_all = false;
-                match mode {
+                mode = match mode {
                     Mode::Normal => match evt {
                         Event::Key(key) => match key {
                             Key::Char(ch) => match ch {
@@ -183,6 +183,7 @@ pub mod util {
                                     if self.screen.cursor.x >= 1 {
                                         self.screen.cursor.x -= 1;
                                     }
+                                    Mode::Normal
                                 }
                                 'j' => {
                                     if self.screen.cursor.y + self.screen.row_offset + 1
@@ -212,6 +213,7 @@ pub mod util {
                                             flag_rewrite_all = true;
                                         }
                                     }
+                                    Mode::Normal
                                 }
                                 'k' => {
                                     if self.screen.cursor.y + self.screen.row_offset >= 1 {
@@ -237,6 +239,7 @@ pub mod util {
                                                 as usize;
                                         }
                                     }
+                                    Mode::Normal
                                 }
                                 'l' => {
                                     if self.screen.cursor.y + self.screen.row_offset
@@ -248,6 +251,7 @@ pub mod util {
                                     {
                                         self.screen.cursor.x += 1;
                                     }
+                                    Mode::Normal
                                 }
                                 'w' => {
                                     let mut has_seen_space = false;
@@ -276,6 +280,7 @@ pub mod util {
                                             _ => break,
                                         }
                                     }
+                                    Mode::Normal
                                 }
                                 'x' => {
                                     if self.text[self.screen.cursor.y + self.screen.row_offset]
@@ -294,37 +299,37 @@ pub mod util {
                                         }
                                     }
                                     line_to_rewrite = Some(self.screen.cursor.y);
+                                    Mode::Normal
                                 }
-                                'i' => {
-                                    mode = Mode::Insert;
-                                }
+                                'i' => Mode::Insert,
                                 'a' => {
                                     self.screen.cursor.x += 1;
-                                    mode = Mode::Insert;
                                     line_to_rewrite = Some(self.screen.cursor.y);
+                                    Mode::Insert
                                 }
                                 'I' => {
                                     self.screen.cursor.x = 0;
-                                    mode = Mode::Insert;
                                     line_to_rewrite = Some(self.screen.cursor.y);
+                                    Mode::Insert
                                 }
                                 'A' => {
                                     self.screen.cursor.x = self.text
                                         [self.screen.cursor.y + self.screen.row_offset]
                                         .len();
-                                    mode = Mode::Insert;
                                     line_to_rewrite = Some(self.screen.cursor.y);
+                                    Mode::Insert
                                 }
-                                ':' => {
-                                    mode = Mode::Command;
-                                }
-                                _ => (),
+                                ':' => Mode::Command,
+                                _ => Mode::Normal,
                             },
                             Key::Ctrl(ch) => match ch {
-                                'l' => flag_rewrite_all = true,
-                                _ => (),
+                                'l' => {
+                                    flag_rewrite_all = true;
+                                    Mode::Normal
+                                }
+                                _ => Mode::Normal,
                             },
-                            _ => (),
+                            _ => Mode::Normal,
                         },
                         Event::Mouse(me) => match me {
                             MouseEvent::Press(_, x, y) => {
@@ -332,21 +337,21 @@ pub mod util {
                                     x: x as usize - 1,
                                     y: y as usize - 1,
                                 };
+                                Mode::Normal
                             }
-                            _ => (),
+                            _ => Mode::Normal,
                         },
-                        _ => (),
+                        _ => Mode::Normal,
                     },
                     Mode::Insert => match evt {
                         Event::Key(key) => match key {
-                            Key::Esc => {
-                                mode = Mode::Normal;
-                            }
+                            Key::Esc => Mode::Normal,
                             Key::Char(ch) => {
                                 self.text[self.screen.cursor.y + self.screen.row_offset]
                                     .insert(self.screen.cursor.x, ch);
                                 self.screen.cursor.x += 1;
                                 line_to_rewrite = Some(self.screen.cursor.y);
+                                Mode::Insert
                             }
                             Key::Ctrl(ch) => match ch {
                                 'u' => {
@@ -355,24 +360,28 @@ pub mod util {
                                         .split_off(self.screen.cursor.x);
                                     self.screen.cursor.x = 0;
                                     line_to_rewrite = Some(self.screen.cursor.y);
+                                    Mode::Insert
                                 }
                                 'a' => {
                                     self.screen.cursor.x = 0;
+                                    Mode::Insert
                                 }
                                 'e' => {
                                     self.screen.cursor.x = self.text
                                         [self.screen.cursor.y + self.screen.row_offset]
                                         .len();
+                                    Mode::Insert
                                 }
-                                _ => (),
+                                _ => Mode::Insert,
                             },
                             Key::Backspace if self.screen.cursor.x >= 1 => {
                                 self.text[self.screen.cursor.y + self.screen.row_offset]
                                     .remove(self.screen.cursor.x - 1);
                                 self.screen.cursor.x -= 1;
                                 line_to_rewrite = Some(self.screen.cursor.y);
+                                Mode::Insert
                             }
-                            _ => (),
+                            _ => Mode::Insert,
                         },
                         Event::Mouse(me) => match me {
                             MouseEvent::Press(_, x, y) => {
@@ -380,18 +389,17 @@ pub mod util {
                                     x: x as usize - 1,
                                     y: y as usize - 1,
                                 };
+                                Mode::Insert
                             }
-                            _ => (),
+                            _ => Mode::Insert,
                         },
-                        _ => (),
+                        _ => Mode::Insert,
                     },
                     Mode::Command => match evt {
-                        Event::Key(Key::Esc) => {
-                            mode = Mode::Normal;
-                        }
-                        _ => (),
+                        Event::Key(Key::Esc) => Mode::Normal,
+                        _ => Mode::Command, //TODO
                     },
-                }
+                };
                 if flag_rewrite_all {
                     self.text
                         .rewrite_entire_screen(&mut self.io.stdout, self.screen.row_offset);
