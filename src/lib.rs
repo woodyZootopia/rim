@@ -17,7 +17,6 @@ pub mod util {
     use std::cmp;
     use std::fs;
     use std::io::{stdin, stdout, Stdin, Stdout, Write};
-    // use termion::color;
     use termion;
     use termion::event::{Event, Key, MouseEvent};
     use termion::input::{MouseTerminal, TermRead};
@@ -27,13 +26,22 @@ pub mod util {
     fn debug_print(stdout: &mut Box<dyn Write>, args: Vec<String>) {
         write!(
             stdout,
-            "{}",
-            termion::cursor::Goto(0, termion::terminal_size().unwrap().1)
+            "{}{}{}",
+            termion::cursor::Goto(0, termion::terminal_size().unwrap().1),
+            termion::color::Bg(termion::color::Green),
+            termion::color::Fg(termion::color::Black),
         )
         .unwrap();
         for item in args {
             write!(stdout, "{}, ", item).unwrap();
         }
+        write!(
+            stdout,
+            "{}{}",
+            termion::color::Fg(termion::color::Reset),
+            termion::color::Bg(termion::color::Reset),
+        )
+        .unwrap();
     }
 
     struct Cursor {
