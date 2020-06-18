@@ -58,7 +58,7 @@ pub mod util {
             write!(stdout, "{}", termion::clear::All).unwrap();
             for (i, column) in self[row_offset
                 ..cmp::min(
-                    termion::terminal_size().unwrap().1 as usize + row_offset,
+                    termion::terminal_size().unwrap().1 as usize + row_offset - 1,
                     self.len(),
                 )]
                 .iter()
@@ -188,7 +188,7 @@ pub mod util {
                                                 .len();
                                         }
                                         if self.screen.cursor.y + 1
-                                            > termion::terminal_size().unwrap().1 as usize
+                                            > termion::terminal_size().unwrap().1 as usize - 1
                                         {
                                             self.screen.cursor.y -= 1;
                                             self.screen.row_offset += 1;
