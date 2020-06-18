@@ -24,7 +24,7 @@ pub mod util {
     use termion::raw::IntoRawMode;
     use termion::screen::AlternateScreen;
 
-    fn debug_print(stdout: &mut Box<dyn Write>, args: Vec<usize>) {
+    fn debug_print(stdout: &mut Box<dyn Write>, args: Vec<String>) {
         write!(
             stdout,
             "{}",
@@ -125,7 +125,13 @@ pub mod util {
     enum Mode {
         Normal,
         Insert,
-        Ex,
+        Command,
+    }
+
+    impl std::fmt::Display for Mode {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(f, "{:?}", self)
+        }
     }
 
     impl EditorState {
@@ -290,7 +296,7 @@ pub mod util {
                                     line_to_rewrite = Some(self.screen.cursor.y);
                                 }
                                 ':' => {
-                                    mode = Mode::Ex;
+                                    mode = Mode::Command;
                                 }
                                 _ => (),
                             },
@@ -329,7 +335,7 @@ pub mod util {
                         }
                         _ => (),
                     },
-                    Mode::Ex => match evt {
+                    Mode::Command => match evt {
                         Event::Key(Key::Esc) => {
                             mode = Mode::Normal;
                         }
@@ -351,7 +357,11 @@ pub mod util {
                 }
                 debug_print(
                     &mut self.io.stdout,
-                    vec![self.screen.cursor.y, self.screen.row_offset],
+                    vec![
+                        mode.to_string().to_uppercase(),
+                        (self.screen.cursor.y + self.screen.row_offset + 1).to_string(),
+                        (self.screen.cursor.x + 1).to_string(),
+                    ],
                 );
                 write!(
                     self.io.stdout,
