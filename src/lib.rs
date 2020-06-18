@@ -24,6 +24,17 @@ pub mod util {
     use termion::raw::IntoRawMode;
     use termion::screen::AlternateScreen;
 
+    fn debug_print(stdout: &mut Box<dyn Write>, args: Vec<usize>) {
+        write!(
+            stdout,
+            "{}",
+            termion::cursor::Goto(0, termion::terminal_size().unwrap().1)
+        );
+        for item in args {
+            write!(stdout, "{}, ", item);
+        }
+    }
+
     struct Cursor {
         x: usize,
         y: usize,
@@ -301,6 +312,10 @@ pub mod util {
                     ),
                     None => (),
                 }
+                debug_print(
+                    &mut self.io.stdout,
+                    vec![self.screen.cursor.y, self.screen.row_offset],
+                );
                 write!(
                     self.io.stdout,
                     "{}",
