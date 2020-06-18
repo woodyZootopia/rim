@@ -26,8 +26,9 @@ pub mod util {
     fn debug_print(stdout: &mut Box<dyn Write>, mode: &Mode, args: Vec<String>) {
         write!(
             stdout,
-            "{}{}{}",
+            "{}{}{}{}",
             termion::cursor::Goto(0, termion::terminal_size().unwrap().1),
+            termion::clear::CurrentLine,
             match mode {
                 Mode::Normal => termion::color::Bg(termion::color::Rgb(145, 172, 209)),
                 Mode::Insert => termion::color::Bg(termion::color::Rgb(192, 202, 142)),
