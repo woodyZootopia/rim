@@ -55,11 +55,10 @@ pub mod util {
     impl UpdateScreen for Text {
         fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>, row_offset: usize) {
             write!(stdout, "{}", termion::clear::All).unwrap();
-            let num_of_column = self.len();
             for (i, column) in self[row_offset
                 ..cmp::min(
                     termion::terminal_size().unwrap().1 as usize + row_offset,
-                    num_of_column,
+                    self.len(),
                 )]
                 .iter()
                 .enumerate()
@@ -161,135 +160,140 @@ pub mod util {
                 let mut flag_rewrite_all = false;
                 match mode {
                     Mode::Normal => match evt {
-                        Event::Key(kc) => match kc {
-                            Key::Char('q') => break,
-                            Key::Char('h') => {
-                                if self.screen.cursor.x >= 1 {
-                                    self.screen.cursor.x -= 1;
-                                }
-                            }
-                            Key::Char('j') => {
-                                if self.screen.cursor.y + self.screen.row_offset + 1
-                                    < self.screen.text.len()
-                                {
-                                    self.screen.cursor.y += 1;
-                                    if self.screen.cursor.x
-                                        > self.screen.text
-                                            [self.screen.cursor.y + self.screen.row_offset]
-                                            .len()
-                                    {
-                                        self.screen.cursor.x = self.screen.text
-                                            [self.screen.cursor.y + self.screen.row_offset]
-                                            .len();
-                                    }
-                                    if self.screen.cursor.y + 1
-                                        > termion::terminal_size().unwrap().1 as usize
-                                    {
-                                        self.screen.cursor.y -= 1;
-                                        self.screen.row_offset += 1;
-                                        flag_rewrite_all = true;
-                                    }
-                                }
-                            }
-                            Key::Char('k') => {
-                                if self.screen.cursor.y + self.screen.row_offset >= 1 {
-                                    if self.screen.cursor.y == 0 {
-                                        self.screen.row_offset -= 1;
-                                        flag_rewrite_all = true;
-                                    } else {
-                                        self.screen.cursor.y -= 1;
-                                    }
-                                    if self.screen.cursor.x
-                                        >= self.screen.text
-                                            [self.screen.cursor.y + self.screen.row_offset]
-                                            .len()
-                                    {
-                                        self.screen.cursor.x = self.screen.text
-                                            [self.screen.cursor.y + self.screen.row_offset]
-                                            .len();
-                                    }
-                                }
-                            }
-                            Key::Char('l') => {
-                                if self.screen.cursor.y + self.screen.row_offset
-                                    < self.screen.text.len()
-                                    && self.screen.cursor.x + 1
-                                        < self.screen.text
-                                            [self.screen.cursor.y + self.screen.row_offset]
-                                            .len()
-                                {
-                                    self.screen.cursor.x += 1;
-                                }
-                            }
-                            Key::Char('w') => {
-                                let mut has_seen_space = false;
-                                loop {
-                                    if self.screen.cursor.x + 1
-                                        >= self.screen.text
-                                            [self.screen.cursor.y + self.screen.row_offset]
-                                            .len()
-                                    {
-                                        break;
-                                    }
-                                    match self.screen.text
-                                        [self.screen.cursor.y + self.screen.row_offset]
-                                        [self.screen.cursor.x]
-                                    {
-                                        'a'..='z' => {
-                                            if has_seen_space {
-                                                break;
-                                            }
-                                            self.screen.cursor.x += 1;
-                                        }
-                                        ' ' => {
-                                            has_seen_space = true;
-                                            self.screen.cursor.x += 1;
-                                        }
-                                        _ => break,
-                                    }
-                                }
-                            }
-                            Key::Char('x') => {
-                                if self.screen.text[self.screen.cursor.y + self.screen.row_offset]
-                                    .len()
-                                    >= 1
-                                {
-                                    self.screen.text[self.screen.cursor.y + self.screen.row_offset]
-                                        .remove(self.screen.cursor.x);
-                                    if self.screen.cursor.x
-                                        >= self.screen.text
-                                            [self.screen.cursor.y + self.screen.row_offset]
-                                            .len()
-                                        && self.screen.cursor.x > 0
-                                    {
+                        Event::Key(key) => match key {
+                            Key::Char(ch) => match ch {
+                                'q' => break,
+                                'h' => {
+                                    if self.screen.cursor.x >= 1 {
                                         self.screen.cursor.x -= 1;
                                     }
                                 }
-                                line_to_rewrite = Some(self.screen.cursor.y);
-                            }
-                            Key::Char('i') => {
-                                mode = Mode::Insert;
-                            }
-                            Key::Char('a') => {
-                                self.screen.cursor.x += 1;
-                                mode = Mode::Insert;
-                                line_to_rewrite = Some(self.screen.cursor.y);
-                            }
-                            Key::Char('I') => {
-                                self.screen.cursor.x = 0;
-                                mode = Mode::Insert;
-                                line_to_rewrite = Some(self.screen.cursor.y);
-                            }
-                            Key::Char('A') => {
-                                self.screen.cursor.x = self.screen.text
-                                    [self.screen.cursor.y + self.screen.row_offset]
-                                    .len();
-                                mode = Mode::Insert;
-                                line_to_rewrite = Some(self.screen.cursor.y);
-                            }
-                            Key::Char(':') => {
-                                mode = Mode::Ex;
-                            }
+                                'j' => {
+                                    if self.screen.cursor.y + self.screen.row_offset + 1
+                                        < self.screen.text.len()
+                                    {
+                                        self.screen.cursor.y += 1;
+                                        if self.screen.cursor.x
+                                            > self.screen.text
+                                                [self.screen.cursor.y + self.screen.row_offset]
+                                                .len()
+                                        {
+                                            self.screen.cursor.x = self.screen.text
+                                                [self.screen.cursor.y + self.screen.row_offset]
+                                                .len();
+                                        }
+                                        if self.screen.cursor.y + 1
+                                            > termion::terminal_size().unwrap().1 as usize
+                                        {
+                                            self.screen.cursor.y -= 1;
+                                            self.screen.row_offset += 1;
+                                            flag_rewrite_all = true;
+                                        }
+                                    }
+                                }
+                                'k' => {
+                                    if self.screen.cursor.y + self.screen.row_offset >= 1 {
+                                        if self.screen.cursor.y == 0 {
+                                            self.screen.row_offset -= 1;
+                                            flag_rewrite_all = true;
+                                        } else {
+                                            self.screen.cursor.y -= 1;
+                                        }
+                                        if self.screen.cursor.x
+                                            >= self.screen.text
+                                                [self.screen.cursor.y + self.screen.row_offset]
+                                                .len()
+                                        {
+                                            self.screen.cursor.x = self.screen.text
+                                                [self.screen.cursor.y + self.screen.row_offset]
+                                                .len();
+                                        }
+                                    }
+                                }
+                                'l' => {
+                                    if self.screen.cursor.y + self.screen.row_offset
+                                        < self.screen.text.len()
+                                        && self.screen.cursor.x + 1
+                                            < self.screen.text
+                                                [self.screen.cursor.y + self.screen.row_offset]
+                                                .len()
+                                    {
+                                        self.screen.cursor.x += 1;
+                                    }
+                                }
+                                'w' => {
+                                    let mut has_seen_space = false;
+                                    loop {
+                                        if self.screen.cursor.x + 1
+                                            >= self.screen.text
+                                                [self.screen.cursor.y + self.screen.row_offset]
+                                                .len()
+                                        {
+                                            break;
+                                        }
+                                        match self.screen.text
+                                            [self.screen.cursor.y + self.screen.row_offset]
+                                            [self.screen.cursor.x]
+                                        {
+                                            'a'..='z' => {
+                                                if has_seen_space {
+                                                    break;
+                                                }
+                                                self.screen.cursor.x += 1;
+                                            }
+                                            ' ' => {
+                                                has_seen_space = true;
+                                                self.screen.cursor.x += 1;
+                                            }
+                                            _ => break,
+                                        }
+                                    }
+                                }
+                                'x' => {
+                                    if self.screen.text
+                                        [self.screen.cursor.y + self.screen.row_offset]
+                                        .len()
+                                        >= 1
+                                    {
+                                        self.screen.text
+                                            [self.screen.cursor.y + self.screen.row_offset]
+                                            .remove(self.screen.cursor.x);
+                                        if self.screen.cursor.x
+                                            >= self.screen.text
+                                                [self.screen.cursor.y + self.screen.row_offset]
+                                                .len()
+                                            && self.screen.cursor.x > 0
+                                        {
+                                            self.screen.cursor.x -= 1;
+                                        }
+                                    }
+                                    line_to_rewrite = Some(self.screen.cursor.y);
+                                }
+                                'i' => {
+                                    mode = Mode::Insert;
+                                }
+                                'a' => {
+                                    self.screen.cursor.x += 1;
+                                    mode = Mode::Insert;
+                                    line_to_rewrite = Some(self.screen.cursor.y);
+                                }
+                                'I' => {
+                                    self.screen.cursor.x = 0;
+                                    mode = Mode::Insert;
+                                    line_to_rewrite = Some(self.screen.cursor.y);
+                                }
+                                'A' => {
+                                    self.screen.cursor.x = self.screen.text
+                                        [self.screen.cursor.y + self.screen.row_offset]
+                                        .len();
+                                    mode = Mode::Insert;
+                                    line_to_rewrite = Some(self.screen.cursor.y);
+                                }
+                                ':' => {
+                                    mode = Mode::Ex;
+                                }
+                                _ => (),
+                            },
                             _ => (),
                         },
                         Event::Mouse(me) => match me {
