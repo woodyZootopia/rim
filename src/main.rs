@@ -1,7 +1,7 @@
 extern crate termion;
 
 use rim::Config;
-use rim::util::*;
+use rim::EditorState;
 use std::env;
 
 fn main() {
