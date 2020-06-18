@@ -37,9 +37,7 @@ pub mod util {
             termion::color::Fg(termion::color::Black),
         )
         .unwrap();
-        for item in args {
-            write!(stdout, "{}, ", item).unwrap();
-        }
+        write!(stdout, "{}", args.join(", ")).unwrap();
         write!(
             stdout,
             "{}{}",
@@ -340,38 +338,51 @@ pub mod util {
                         _ => (),
                     },
                     Mode::Insert => match evt {
-                        Event::Key(Key::Esc) => {
-                            mode = Mode::Normal;
-                        }
-                        Event::Key(Key::Char(ch)) => {
-                            self.text[self.screen.cursor.y + self.screen.row_offset]
-                                .insert(self.screen.cursor.x, ch);
-                            self.screen.cursor.x += 1;
-                            line_to_rewrite = Some(self.screen.cursor.y);
-                        }
-                        Event::Key(Key::Ctrl(ch)) => match ch {
-                            'u' => {
-                                self.text[self.screen.cursor.y + self.screen.row_offset] = self
-                                    .text[self.screen.cursor.y + self.screen.row_offset]
-                                    .split_off(self.screen.cursor.x);
-                                self.screen.cursor.x = 0;
+                        Event::Key(key) => match key {
+                            Key::Esc => {
+                                mode = Mode::Normal;
+                            }
+                            Key::Char(ch) => {
+                                self.text[self.screen.cursor.y + self.screen.row_offset]
+                                    .insert(self.screen.cursor.x, ch);
+                                self.screen.cursor.x += 1;
                                 line_to_rewrite = Some(self.screen.cursor.y);
                             }
-                            'a' => {
-                                self.screen.cursor.x = 0;
-                            }
-                            'e' => {
-                                self.screen.cursor.x =
-                                    self.text[self.screen.cursor.y + self.screen.row_offset].len();
+                            Key::Ctrl(ch) => match ch {
+                                'u' => {
+                                    self.text[self.screen.cursor.y + self.screen.row_offset] = self
+                                        .text[self.screen.cursor.y + self.screen.row_offset]
+                                        .split_off(self.screen.cursor.x);
+                                    self.screen.cursor.x = 0;
+                                    line_to_rewrite = Some(self.screen.cursor.y);
+                                }
+                                'a' => {
+                                    self.screen.cursor.x = 0;
+                                }
+                                'e' => {
+                                    self.screen.cursor.x = self.text
+                                        [self.screen.cursor.y + self.screen.row_offset]
+                                        .len();
+                                }
+                                _ => (),
+                            },
+                            Key::Backspace if self.screen.cursor.x >= 1 => {
+                                self.text[self.screen.cursor.y + self.screen.row_offset]
+                                    .remove(self.screen.cursor.x - 1);
+                                self.screen.cursor.x -= 1;
+                                line_to_rewrite = Some(self.screen.cursor.y);
                             }
                             _ => (),
                         },
-                        Event::Key(Key::Backspace) if self.screen.cursor.x >= 1 => {
-                            self.text[self.screen.cursor.y + self.screen.row_offset]
-                                .remove(self.screen.cursor.x - 1);
-                            self.screen.cursor.x -= 1;
-                            line_to_rewrite = Some(self.screen.cursor.y);
-                        }
+                        Event::Mouse(me) => match me {
+                            MouseEvent::Press(_, x, y) => {
+                                self.screen.cursor = Cursor {
+                                    x: x as usize - 1,
+                                    y: y as usize - 1,
+                                };
+                            }
+                            _ => (),
+                        },
                         _ => (),
                     },
                     Mode::Command => match evt {
