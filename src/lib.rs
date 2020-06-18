@@ -294,6 +294,10 @@ pub mod util {
                                 }
                                 _ => (),
                             },
+                            Key::Ctrl(ch) => match ch {
+                                'l' => flag_rewrite_all = true,
+                                _ => (),
+                            },
                             _ => (),
                         },
                         Event::Mouse(me) => match me {
