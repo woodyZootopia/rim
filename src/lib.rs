@@ -23,12 +23,17 @@ pub mod util {
     use termion::raw::IntoRawMode;
     use termion::screen::AlternateScreen;
 
-    fn debug_print(stdout: &mut Box<dyn Write>, args: Vec<String>) {
+    fn debug_print(stdout: &mut Box<dyn Write>, mode: &Mode, args: Vec<String>) {
         write!(
             stdout,
             "{}{}{}",
             termion::cursor::Goto(0, termion::terminal_size().unwrap().1),
-            termion::color::Bg(termion::color::Green),
+            match mode {
+                Mode::Normal => termion::color::Bg(termion::color::Rgb(145, 172, 209)),
+                Mode::Insert => termion::color::Bg(termion::color::Rgb(192, 202, 142)),
+                Mode::Command => termion::color::Bg(termion::color::Rgb(233, 144, 144)),
+                _ => termion::color::Bg(termion::color::Rgb(145, 172, 209)),
+            },
             termion::color::Fg(termion::color::Black),
         )
         .unwrap();
@@ -373,6 +378,7 @@ pub mod util {
                 }
                 debug_print(
                     &mut self.io.stdout,
+                    &mode,
                     vec![
                         mode.to_string().to_uppercase(),
                         (self.screen.cursor.y + self.screen.row_offset + 1).to_string(),
