@@ -349,6 +349,23 @@ pub mod util {
                             self.screen.cursor.x += 1;
                             line_to_rewrite = Some(self.screen.cursor.y);
                         }
+                        Event::Key(Key::Ctrl(ch)) => match ch {
+                            'u' => {
+                                self.text[self.screen.cursor.y + self.screen.row_offset] = self
+                                    .text[self.screen.cursor.y + self.screen.row_offset]
+                                    .split_off(self.screen.cursor.x);
+                                self.screen.cursor.x = 0;
+                                line_to_rewrite = Some(self.screen.cursor.y);
+                            }
+                            'a' => {
+                                self.screen.cursor.x = 0;
+                            }
+                            'e' => {
+                                self.screen.cursor.x =
+                                    self.text[self.screen.cursor.y + self.screen.row_offset].len();
+                            }
+                            _ => (),
+                        },
                         Event::Key(Key::Backspace) if self.screen.cursor.x >= 1 => {
                             self.text[self.screen.cursor.y + self.screen.row_offset]
                                 .remove(self.screen.cursor.x - 1);
