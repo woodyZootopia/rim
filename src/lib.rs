@@ -31,7 +31,7 @@ fn debug_print(stdout: &mut Box<dyn Write>, mode: &Mode, args: Vec<String>) {
         match mode {
             Mode::Normal => termion::color::Bg(termion::color::Rgb(145, 172, 209)),
             Mode::Insert => termion::color::Bg(termion::color::Rgb(192, 202, 142)),
-            Mode::Command => termion::color::Bg(termion::color::Rgb(233, 144, 144)),
+            Mode::Command(_) => termion::color::Bg(termion::color::Rgb(233, 144, 144)),
         },
         termion::color::Fg(termion::color::Black),
     )
@@ -126,16 +126,19 @@ pub struct IO {
     stdout: Box<dyn Write>,
 }
 
-#[derive(Debug)]
 enum Mode {
     Normal,
     Insert,
-    Command,
+    Command(String),
 }
 
 impl std::fmt::Display for Mode {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            Mode::Normal => write!(f, "NORMAL"),
+            Mode::Insert => write!(f, "INSERT"),
+            Mode::Command(command) => write!(f, "COMMAND:{} ", command),
+        }
     }
 }
 
@@ -304,7 +307,7 @@ impl EditorState {
                                 line_to_rewrite = Some(self.screen.cursor.y);
                                 Mode::Insert
                             }
-                            ':' => Mode::Command,
+                            ':' => Mode::Command(String::new()),
                             _ => Mode::Normal,
                         },
                         Key::Ctrl(ch) => match ch {
@@ -379,9 +382,24 @@ impl EditorState {
                     },
                     _ => Mode::Insert,
                 },
-                Mode::Command => match evt {
+                Mode::Command(mut command_buffer) => match evt {
                     Event::Key(Key::Esc) => Mode::Normal,
-                    _ => Mode::Command, //TODO
+                    Event::Key(Key::Char('\n')) => {
+                        Mode::Command(String::from("Sorry, no command is implemented for now!"))
+                    }
+                    Event::Key(Key::Char(key)) => {
+                        command_buffer.push(key);
+                        Mode::Command(command_buffer)
+                    }
+                    Event::Key(Key::Backspace) => {
+                        if command_buffer.len() > 0 {
+                            command_buffer.pop();
+                            Mode::Command(command_buffer)
+                        } else {
+                            Mode::Normal
+                        }
+                    }
+                    _ => Mode::Command(command_buffer),
                 },
             };
             if flag_rewrite_all {
@@ -399,7 +417,7 @@ impl EditorState {
                 &mut self.io.stdout,
                 &mode,
                 vec![
-                    mode.to_string().to_uppercase(),
+                    mode.to_string(),
                     (self.screen.cursor.y + self.screen.row_offset + 1).to_string(),
                     (self.screen.cursor.x + 1).to_string(),
                 ],
