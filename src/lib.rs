@@ -246,6 +246,14 @@ impl EditorState {
                                 }
                                 Mode::Normal
                             }
+                            '0' => {
+                                self.screen.cursor.x=0;
+                                Mode::Normal
+                            }
+                            '$' => {
+                                self.screen.cursor.x=self.text[self.screen.cursor.y + self.screen.row_offset].len()-1;
+                                Mode::Normal
+                            }
                             'w' => {
                                 let mut has_seen_space = false;
                                 loop {
