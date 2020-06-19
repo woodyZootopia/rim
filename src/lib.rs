@@ -319,17 +319,16 @@ impl EditorState {
                         },
                         _ => Mode::Normal,
                     },
-                    Event::Mouse(me) => match me {
-                        MouseEvent::Press(_, x, y) => {
+                    Event::Mouse(me) => {
+                        if let MouseEvent::Press(_,x,y) = me {
                             self.screen.cursor = Cursor {
                                 x: x as usize - 1,
                                 y: y as usize - 1,
                             };
-                            Mode::Normal
-                        }
-                        _ => Mode::Normal,
-                    },
-                    _ => Mode::Normal,
+                        };
+                        Mode::Normal
+                    }
+                    _ => Mode::Normal
                 },
                 Mode::Insert => match evt {
                     Event::Key(key) => match key {
@@ -370,16 +369,15 @@ impl EditorState {
                         }
                         _ => Mode::Insert,
                     },
-                    Event::Mouse(me) => match me {
-                        MouseEvent::Press(_, x, y) => {
+                    Event::Mouse(me) => {
+                        if let MouseEvent::Press(_,x,y) = me {
                             self.screen.cursor = Cursor {
                                 x: x as usize - 1,
                                 y: y as usize - 1,
                             };
-                            Mode::Insert
                         }
-                        _ => Mode::Insert,
-                    },
+                    Mode::Insert
+                    }
                     _ => Mode::Insert,
                 },
                 Mode::Command(mut command_buffer) => match evt {
