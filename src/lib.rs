@@ -383,22 +383,29 @@ impl EditorState {
                     _ => Mode::Insert,
                 },
                 Mode::Command(mut command_buffer) => match evt {
-                    Event::Key(Key::Esc) => Mode::Normal,
-                    Event::Key(Key::Char('\n')) => {
-                        Mode::Command(String::from("Sorry, no command is implemented for now!"))
-                    }
-                    Event::Key(Key::Char(key)) => {
-                        command_buffer.push(key);
-                        Mode::Command(command_buffer)
-                    }
-                    Event::Key(Key::Backspace) => {
-                        if command_buffer.len() > 0 {
-                            command_buffer.pop();
-                            Mode::Command(command_buffer)
-                        } else {
-                            Mode::Normal
+                    Event::Key(key) => match key {
+                        Key::Esc => Mode::Normal,
+                        Key::Char('\n') => {
+                            Mode::Command(String::from("Sorry, no command is implemented for now! Go back to Normal mode with C-c"))
                         }
-                    }
+                        Key::Char(key) => {
+                            command_buffer.push(key);
+                            Mode::Command(command_buffer)
+                        }
+                        Key::Backspace => {
+                            if command_buffer.len() > 0 {
+                                command_buffer.pop();
+                                Mode::Command(command_buffer)
+                            } else {
+                                Mode::Normal
+                            }
+                        }
+                        Key::Ctrl(key) => match key {
+                            'c' => Mode::Normal,
+                            _ => Mode::Command(command_buffer),
+                        },
+                        _ => Mode::Command(command_buffer),
+                    },
                     _ => Mode::Command(command_buffer),
                 },
             };
