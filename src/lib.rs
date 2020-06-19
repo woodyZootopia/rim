@@ -200,7 +200,9 @@ impl EditorState {
                                     {
                                         self.screen.cursor.y -= 1;
                                         self.screen.row_offset += 1;
-                                        flag_rewrite_all = true;
+                                        write!(self.io.stdout, "{}", termion::scroll::Up(1))
+                                            .unwrap();
+                                        line_to_rewrite = Some(self.screen.cursor.y);
                                     }
                                 }
                                 Mode::Normal
@@ -209,7 +211,9 @@ impl EditorState {
                                 if self.screen.cursor.y + self.screen.row_offset >= 1 {
                                     if self.screen.cursor.y == 0 {
                                         self.screen.row_offset -= 1;
-                                        flag_rewrite_all = true;
+                                        write!(self.io.stdout, "{}", termion::scroll::Down(1))
+                                            .unwrap();
+                                        line_to_rewrite = Some(self.screen.cursor.y);
                                     } else {
                                         self.screen.cursor.y -= 1;
                                     }
