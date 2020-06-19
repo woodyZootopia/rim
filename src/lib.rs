@@ -384,7 +384,10 @@ impl EditorState {
                     Event::Key(key) => match key {
                         Key::Esc => Mode::Normal,
                         Key::Char('\n') => {
-                            Mode::Command(String::from("Sorry, no command is implemented for now! Go back to Normal mode with C-c"))
+                            match command_buffer.as_str() {
+                                "q" => break,
+                                _ => Mode::Command(String::from("Sorry, that command is not implemented for now! Go back to Normal mode with C-c."))
+                            }
                         }
                         Key::Char(key) => {
                             command_buffer.push(key);
