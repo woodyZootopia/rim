@@ -171,6 +171,7 @@ impl EditorState {
             let evt = c.unwrap();
             let mut line_to_rewrite: Option<usize> = None;
             let mut flag_rewrite_all = false;
+            let mut error_message: Option<String> = None;
             mode = match mode {
                 Mode::Normal => match evt {
                     Event::Key(key) => match key {
@@ -393,16 +394,24 @@ impl EditorState {
                 Mode::Command(mut command_buffer) => match evt {
                     Event::Key(key) => match key {
                         Key::Esc => Mode::Normal,
-                        Key::Char('\n') => {
-                            match command_buffer.as_str() {
-                                "q" => break,
-                                "w" => {
-                                    save_to_file(&self.filepath, &self.text);
-                                    Mode::Normal
-                                },
-                                _ => Mode::Command(String::from("Sorry, that command is not implemented for now! Go back to Normal mode with C-c."))
+                        Key::Char('\n') => match command_buffer.as_str() {
+                            "q" => break,
+                            "w" => {
+                                match save_to_file(&self.filepath, &self.text) {
+                                    Ok(_) => error_message = Some("Save complete".to_string()),
+                                    Err(why) => {
+                                        error_message =
+                                            Some(["Save failed! reason", why.to_string().as_str()].join(": "))
+                                    }
+                                }
+                                Mode::Normal
                             }
-                        }
+                            "" => Mode::Normal,
+                            _ => {
+                                error_message = Some("Sorry, that command is not implemented for now! Go back to Normal mode with C-c.".to_string());
+                                Mode::Command(String::new())
+                            }
+                        },
                         Key::Char(key) => {
                             command_buffer.push(key);
                             Mode::Command(command_buffer)
@@ -435,15 +444,18 @@ impl EditorState {
                 }
                 None => (),
             }
-            debug_print(
-                &mut self.io.stdout,
-                &mode,
-                vec![
-                    mode.to_string(),
-                    (self.screen.cursor.y + self.screen.row_offset + 1).to_string(),
-                    (self.screen.cursor.x + 1).to_string(),
-                ],
-            );
+            match error_message {
+                None => debug_print(
+                    &mut self.io.stdout,
+                    &mode,
+                    vec![
+                        mode.to_string(),
+                        (self.screen.cursor.y + self.screen.row_offset + 1).to_string(),
+                        (self.screen.cursor.x + 1).to_string(),
+                    ],
+                ),
+                Some(message) => debug_print(&mut self.io.stdout, &mode, vec![message]),
+            }
             write!(
                 self.io.stdout,
                 "{}",
