@@ -1,11 +1,9 @@
 use std::cmp;
 use std::fs;
-use std::io::{stdin, stdout, Error, Stdin, Write};
+use std::io::{stdin, stdout, BufRead, Error, Write};
 use termion;
 use termion::event::{Event, Key, MouseEvent};
-use termion::input::{MouseTerminal, TermRead};
-use termion::raw::IntoRawMode;
-use termion::screen::AlternateScreen;
+use termion::input::TermRead;
 
 pub struct Config {
     pub filepath: String,
@@ -22,7 +20,10 @@ impl Config {
     }
 }
 
-fn debug_print(stdout: &mut Box<dyn Write>, mode: &Mode, args: Vec<String>) {
+fn debug_print<W>(mut stdout: W, mode: &Mode, args: Vec<String>)
+where
+    W: Write,
+{
     write!(
         stdout,
         "{}{}{}{}",
@@ -53,18 +54,19 @@ struct Cursor {
 
 type Text = Vec<Vec<char>>;
 
-trait UpdateScreen {
-    fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>, row_offset: usize) -> ();
-    fn rewrite_single_line(
-        &self,
-        stdout: &mut Box<dyn Write>,
-        line_to_rewrite: usize,
-        row_offset: usize,
-    ) -> ();
+trait UpdateScreen<W>
+where
+    W: Write,
+{
+    fn rewrite_entire_screen(&self, stdout: W, row_offset: usize) -> ();
+    fn rewrite_single_line(&self, stdout: W, line_to_rewrite: usize, row_offset: usize) -> ();
 }
 
-impl UpdateScreen for Text {
-    fn rewrite_entire_screen(&self, stdout: &mut Box<dyn Write>, row_offset: usize) {
+impl<W> UpdateScreen<W> for Text
+where
+    W: Write,
+{
+    fn rewrite_entire_screen(&self, mut stdout: W, row_offset: usize) {
         write!(stdout, "{}", termion::clear::All).unwrap();
         for (i, column) in self[row_offset
             ..cmp::min(
@@ -85,12 +87,7 @@ impl UpdateScreen for Text {
         write!(stdout, "{}", termion::cursor::Goto(1, 1)).unwrap();
         stdout.flush().unwrap();
     }
-    fn rewrite_single_line(
-        &self,
-        stdout: &mut Box<dyn Write>,
-        line_to_rewrite: usize,
-        row_offset: usize,
-    ) {
+    fn rewrite_single_line(&self, mut stdout: W, line_to_rewrite: usize, row_offset: usize) {
         let column = self.iter().collect::<Vec<&Vec<char>>>()[line_to_rewrite + row_offset];
         write!(
             stdout,
@@ -139,9 +136,13 @@ impl ScreenState {
     }
 }
 
-pub struct IO {
-    stdin: Stdin,
-    stdout: Box<dyn Write>,
+pub struct IO<R, W>
+where
+    R: BufRead,
+    W: Write,
+{
+    stdin: R,
+    stdout: W,
 }
 
 enum Mode {
@@ -160,20 +161,31 @@ impl std::fmt::Display for Mode {
     }
 }
 
-pub struct EditorState {
+pub struct EditorState<R, W>
+where
+    R: BufRead,
+    W: Write,
+{
     filepath: String,
     screen: ScreenState,
-    io: IO,
+    io: IO<R, W>,
     text: Text,
 }
 
-impl EditorState {
-    pub fn new(config: Config) -> EditorState {
+impl<R, W> EditorState<R, W>
+where
+    R: BufRead,
+    W: Write,
+{
+    pub fn new(reader: R, writer: W, config: Config) -> Self
+    where
+        R: BufRead,
+        W: Write,
+    {
         let text = fs::read_to_string(&config.filepath).unwrap();
         let text: Vec<Vec<char>> = text.lines().map(|x| x.chars().collect()).collect();
-        let stdin = stdin();
-        let stdout = AlternateScreen::from(MouseTerminal::from(stdout().into_raw_mode().unwrap()));
-        let mut stdout = Box::from(stdout);
+        let stdin = reader;
+        let mut stdout = writer;
 
         write!(stdout, "{}", termion::clear::All).unwrap();
 
@@ -493,4 +505,19 @@ fn save_to_file(filepath: &String, contents: &Text) -> std::result::Result<(), E
         .join("\n");
     std::fs::write(filepath, contents)?;
     return Ok(());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_basic_cursor_move() {
+        let config = Config {
+            filepath: "./test.txt".to_string(),
+        };
+        let stdio = stdin();
+        let input = stdio.lock();
+        let output = stdout();
+        let editor = EditorState::new(input, output, config);
+    }
 }
