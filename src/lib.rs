@@ -250,11 +250,13 @@ impl EditorState {
                                 Mode::Normal
                             }
                             '0' => {
-                                self.screen.cursor.x=0;
+                                self.screen.cursor.x = 0;
                                 Mode::Normal
                             }
                             '$' => {
-                                self.screen.cursor.x=self.text[self.screen.cursor.y + self.screen.row_offset].len()-1;
+                                self.screen.cursor.x =
+                                    self.text[self.screen.cursor.y + self.screen.row_offset].len()
+                                        - 1;
                                 Mode::Normal
                             }
                             'w' => {
@@ -273,10 +275,6 @@ impl EditorState {
                                             if has_seen_space {
                                                 break;
                                             }
-                                            self.screen.cursor.x += 1;
-                                        }
-                                        ' ' => {
-                                            has_seen_space = true;
                                             self.screen.cursor.x += 1;
                                         }
                                         _ => break,
@@ -331,7 +329,7 @@ impl EditorState {
                         _ => Mode::Normal,
                     },
                     Event::Mouse(me) => {
-                        if let MouseEvent::Press(_,x,y) = me {
+                        if let MouseEvent::Press(_, x, y) = me {
                             self.screen.cursor = Cursor {
                                 x: x as usize - 1,
                                 y: y as usize - 1,
@@ -339,7 +337,7 @@ impl EditorState {
                         };
                         Mode::Normal
                     }
-                    _ => Mode::Normal
+                    _ => Mode::Normal,
                 },
                 Mode::Insert => match evt {
                     Event::Key(key) => match key {
@@ -381,13 +379,13 @@ impl EditorState {
                         _ => Mode::Insert,
                     },
                     Event::Mouse(me) => {
-                        if let MouseEvent::Press(_,x,y) = me {
+                        if let MouseEvent::Press(_, x, y) = me {
                             self.screen.cursor = Cursor {
                                 x: x as usize - 1,
                                 y: y as usize - 1,
                             };
                         }
-                    Mode::Insert
+                        Mode::Insert
                     }
                     _ => Mode::Insert,
                 },
@@ -400,8 +398,10 @@ impl EditorState {
                                 match save_to_file(&self.filepath, &self.text) {
                                     Ok(_) => error_message = Some("Save complete".to_string()),
                                     Err(why) => {
-                                        error_message =
-                                            Some(["Save failed! reason", why.to_string().as_str()].join(": "))
+                                        error_message = Some(
+                                            ["Save failed! reason", why.to_string().as_str()]
+                                                .join(": "),
+                                        )
                                     }
                                 }
                                 Mode::Normal
@@ -475,6 +475,6 @@ fn save_to_file(filepath: &String, contents: &Text) -> std::result::Result<(), E
         .map(|x| x.iter().collect::<String>())
         .collect::<Vec<String>>()
         .join("\n");
-    let mut file = std::fs::write(filepath, contents)?;
+    std::fs::write(filepath, contents)?;
     return Ok(());
 }
