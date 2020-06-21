@@ -193,13 +193,11 @@ impl EditorState {
                                             .len()
                                     {
                                         self.screen.cursor.x = cmp::max(
-                                            self.text[self.screen.cursor.y + self.screen.row_offset]
-                                                .len()
-                                                as i32
-                                                - 1,
-                                            0,
-                                        )
-                                            as usize;
+                                            self.text
+                                                [self.screen.cursor.y + self.screen.row_offset]
+                                                .len(),
+                                            1,
+                                        ) - 1;
                                     }
                                     if self.screen.cursor.y + 1
                                         > termion::terminal_size().unwrap().1 as usize - 1
