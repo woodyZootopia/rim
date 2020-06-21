@@ -1,6 +1,6 @@
 use std::cmp;
 use std::fs;
-use std::io::{stdin, stdout, Stdin, Write};
+use std::io::{stdin, stdout, Error, Stdin, Write};
 use termion;
 use termion::event::{Event, Key, MouseEvent};
 use termion::input::{MouseTerminal, TermRead};
@@ -8,17 +8,17 @@ use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 
 pub struct Config {
-    pub filename: String,
+    pub filepath: String,
 }
 
 impl Config {
     pub fn new(mut args: std::env::Args) -> Result<Config, &'static str> {
         args.next();
-        let filename = match args.next() {
+        let filepath = match args.next() {
             Some(arg) => arg,
             None => return Err("Didn't get a filename"),
         };
-        Ok(Config { filename })
+        Ok(Config { filepath })
     }
 }
 
@@ -104,12 +104,6 @@ impl UpdateScreen for Text {
     }
 }
 
-pub struct EditorState {
-    screen: ScreenState,
-    io: IO,
-    text: Text,
-}
-
 pub struct ScreenState {
     cursor: Cursor,
     row_offset: usize,
@@ -142,9 +136,16 @@ impl std::fmt::Display for Mode {
     }
 }
 
+pub struct EditorState {
+    filepath: String,
+    screen: ScreenState,
+    io: IO,
+    text: Text,
+}
+
 impl EditorState {
     pub fn new(config: Config) -> EditorState {
-        let text = fs::read_to_string(config.filename).unwrap();
+        let text = fs::read_to_string(&config.filepath).unwrap();
         let text: Vec<Vec<char>> = text.lines().map(|x| x.chars().collect()).collect();
         let stdin = stdin();
         let stdout = AlternateScreen::from(MouseTerminal::from(stdout().into_raw_mode().unwrap()));
@@ -153,6 +154,7 @@ impl EditorState {
         write!(stdout, "{}", termion::clear::All).unwrap();
 
         EditorState {
+            filepath: config.filepath,
             text,
             screen: ScreenState {
                 cursor: Cursor { x: 0, y: 0 },
@@ -394,6 +396,10 @@ impl EditorState {
                         Key::Char('\n') => {
                             match command_buffer.as_str() {
                                 "q" => break,
+                                "w" => {
+                                    save_to_file(&self.filepath, &self.text);
+                                    Mode::Normal
+                                },
                                 _ => Mode::Command(String::from("Sorry, that command is not implemented for now! Go back to Normal mode with C-c."))
                             }
                         }
@@ -450,4 +456,13 @@ impl EditorState {
             self.io.stdout.flush().unwrap();
         }
     }
+}
+fn save_to_file(filepath: &String, contents: &Text) -> std::result::Result<(), Error> {
+    let contents = contents
+        .iter()
+        .map(|x| x.iter().collect::<String>())
+        .collect::<Vec<String>>()
+        .join("\n");
+    let mut file = std::fs::write(filepath, contents)?;
+    return Ok(());
 }
