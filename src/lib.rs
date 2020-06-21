@@ -110,8 +110,32 @@ pub struct ScreenState {
 }
 
 impl ScreenState {
-    pub fn adjust_screen_offset(&mut self) -> bool {
-        false
+    pub fn move_and_adjust_cursor(&mut self, text: &Text, movement: i32) -> Option<usize> {
+        let mut line_to_rewrite = None;
+        if movement > 0 {
+            if self.cursor.y as i32 + movement > termion::terminal_size().unwrap().1 as i32 - 2 {
+                self.cursor.y -= movement as usize;
+                self.row_offset += movement as usize;
+                line_to_rewrite = Some(self.cursor.y + movement as usize);
+            }
+            self.cursor.y += movement as usize;
+        }
+        if movement < 0 {
+            let distance_to_move_up = -movement as usize;
+            if self.cursor.y as i32 + movement < 0 {
+                if self.row_offset > 0 {
+                    self.row_offset -= distance_to_move_up;
+                }
+                self.cursor.y += distance_to_move_up;
+                line_to_rewrite = Some(self.cursor.y - distance_to_move_up);
+            }
+            self.cursor.y -= -movement as usize;
+        }
+
+        if self.cursor.x > text[self.cursor.y + self.row_offset].len() {
+            self.cursor.x = cmp::max(text[self.cursor.y + self.row_offset].len(), 1) - 1;
+        }
+        return line_to_rewrite;
     }
 }
 
@@ -187,53 +211,25 @@ impl EditorState {
                                 if self.screen.cursor.y + self.screen.row_offset + 1
                                     < self.text.len()
                                 {
-                                    self.screen.cursor.y += 1;
-                                    if self.screen.cursor.x
-                                        > self.text[self.screen.cursor.y + self.screen.row_offset]
-                                            .len()
+                                    if let Some(line) =
+                                        self.screen.move_and_adjust_cursor(&self.text, 1)
                                     {
-                                        self.screen.cursor.x = cmp::max(
-                                            self.text
-                                                [self.screen.cursor.y + self.screen.row_offset]
-                                                .len(),
-                                            1,
-                                        ) - 1;
-                                    }
-                                    if self.screen.cursor.y + 1
-                                        > termion::terminal_size().unwrap().1 as usize - 1
-                                    {
-                                        self.screen.cursor.y -= 1;
-                                        self.screen.row_offset += 1;
+                                        line_to_rewrite = Some(line);
                                         write!(self.io.stdout, "{}", termion::scroll::Up(1))
                                             .unwrap();
-                                        line_to_rewrite = Some(self.screen.cursor.y);
                                     }
                                 }
                                 Mode::Normal
                             }
                             'k' => {
                                 if self.screen.cursor.y + self.screen.row_offset >= 1 {
-                                    if self.screen.cursor.y == 0 {
-                                        self.screen.row_offset -= 1;
+                                    if let Some(line) =
+                                        self.screen.move_and_adjust_cursor(&self.text, -1)
+                                    {
+                                        line_to_rewrite = Some(line);
                                         write!(self.io.stdout, "{}", termion::scroll::Down(1))
                                             .unwrap();
-                                        line_to_rewrite = Some(self.screen.cursor.y);
-                                    } else {
-                                        self.screen.cursor.y -= 1;
-                                    }
-                                    if self.screen.cursor.x
-                                        >= self.text[self.screen.cursor.y + self.screen.row_offset]
-                                            .len()
-                                    {
-                                        self.screen.cursor.x = cmp::max(
-                                            self.text[self.screen.cursor.y + self.screen.row_offset]
-                                                .len()
-                                                as i32
-                                                - 1,
-                                            0,
-                                        )
-                                            as usize;
-                                    }
+                                    };
                                 }
                                 Mode::Normal
                             }
