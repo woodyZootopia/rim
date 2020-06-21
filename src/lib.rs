@@ -299,6 +299,15 @@ impl EditorState {
                                 line_to_rewrite = Some(self.screen.cursor.y);
                                 Mode::Insert
                             }
+                            'o' => {
+                                self.text.insert(
+                                    self.screen.cursor.y + self.screen.row_offset + 1,
+                                    Vec::new(),
+                                );
+                                self.screen.move_and_adjust_cursor(&self.text, 1);
+                                flag_rewrite_all = true;
+                                Mode::Insert
+                            }
                             'I' => {
                                 self.screen.cursor.x = 0;
                                 line_to_rewrite = Some(self.screen.cursor.y);
@@ -336,6 +345,19 @@ impl EditorState {
                 Mode::Insert => match evt {
                     Event::Key(key) => match key {
                         Key::Esc => Mode::Normal,
+                        Key::Char('\n') => {
+                            let right_of_cursor_text = self.text
+                                [self.screen.cursor.y + self.screen.row_offset]
+                                .split_off(self.screen.cursor.x);
+                            self.text.insert(
+                                self.screen.cursor.y + self.screen.row_offset + 1,
+                                right_of_cursor_text,
+                            );
+                            self.screen.move_and_adjust_cursor(&self.text, 1);
+                            self.screen.cursor.x = 0;
+                            flag_rewrite_all = true;
+                            Mode::Insert
+                        }
                         Key::Char(ch) => {
                             self.text[self.screen.cursor.y + self.screen.row_offset]
                                 .insert(self.screen.cursor.x, ch);
