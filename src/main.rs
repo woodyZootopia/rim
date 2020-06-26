@@ -1,7 +1,8 @@
 extern crate termion;
 
-use rim::Config;
-use rim::EditorState;
+mod lib;
+use lib::Config;
+use lib::EditorState;
 use std::env;
 use std::io::{stdin, stdout};
 use termion::input::MouseTerminal;
@@ -12,7 +13,7 @@ fn main() {
     let config = Config::new(env::args()).unwrap();
     let stdin = stdin();
     let stdin = stdin.lock();
-    let mut stdout = AlternateScreen::from(MouseTerminal::from(stdout().into_raw_mode().unwrap()));
+    let stdout = AlternateScreen::from(MouseTerminal::from(stdout().into_raw_mode().unwrap()));
     // let mut stdout = Box::from(stdout);
     let editor = EditorState::new(stdin, stdout, config);
     editor.editor_loop();

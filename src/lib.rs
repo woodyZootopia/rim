@@ -1,6 +1,6 @@
 use std::cmp;
 use std::fs;
-use std::io::{stdin, stdout, BufRead, Error, Write};
+use std::io::{BufRead, Error, Write};
 use termion;
 use termion::event::{Event, Key, MouseEvent};
 use termion::input::TermRead;
@@ -107,7 +107,9 @@ pub struct ScreenState {
 }
 
 impl ScreenState {
-    pub fn move_and_adjust_cursor(&mut self, text: &Text, movement: i32) -> Option<usize> {
+    /// Move key vertically. After that, make sure key is in valid place.
+    /// Returns the line to rewrite.
+    fn move_vert(&mut self, text: &Text, movement: i32) -> Option<usize> {
         let mut line_to_rewrite = None;
         if movement > 0 {
             if self.cursor.y as i32 + movement > termion::terminal_size().unwrap().1 as i32 - 2 {
@@ -118,13 +120,13 @@ impl ScreenState {
             self.cursor.y += movement as usize;
         }
         if movement < 0 {
-            let distance_to_move_up = -movement as usize;
+            let distance = -movement as usize;
             if self.cursor.y as i32 + movement < 0 {
                 if self.row_offset > 0 {
-                    self.row_offset -= distance_to_move_up;
+                    self.row_offset -= distance;
                 }
-                self.cursor.y += distance_to_move_up;
-                line_to_rewrite = Some(self.cursor.y - distance_to_move_up);
+                self.cursor.y += distance;
+                line_to_rewrite = Some(self.cursor.y - distance);
             }
             self.cursor.y -= -movement as usize;
         }
@@ -133,6 +135,19 @@ impl ScreenState {
             self.cursor.x = cmp::max(text[self.cursor.y + self.row_offset].len(), 1) - 1;
         }
         return line_to_rewrite;
+    }
+    /// Move key horizontally. After that, make sure key is in valid place.
+    pub fn move_horiz(&mut self, text: &Text, distance: i32){
+        if distance < 0 {
+            let distance = -distance as usize;
+            self.cursor.x -= cmp::min(self.cursor.x, distance);
+        } else {
+            let distance = distance as usize;
+            self.cursor.x = cmp::min(
+                self.cursor.x + distance,
+                text[self.cursor.y + self.row_offset].len() - 1,
+            );
+        }
     }
 }
 
@@ -214,18 +229,14 @@ where
                         Key::Char(ch) => match ch {
                             'q' => break,
                             'h' => {
-                                if self.screen.cursor.x >= 1 {
-                                    self.screen.cursor.x -= 1;
-                                }
+                                self.screen.move_horiz(&self.text, -1);
                                 Mode::Normal
                             }
                             'j' => {
                                 if self.screen.cursor.y + self.screen.row_offset + 1
                                     < self.text.len()
                                 {
-                                    if let Some(line) =
-                                        self.screen.move_and_adjust_cursor(&self.text, 1)
-                                    {
+                                    if let Some(line) = self.screen.move_vert(&self.text, 1) {
                                         line_to_rewrite = Some(line);
                                         write!(self.io.stdout, "{}", termion::scroll::Up(1))
                                             .unwrap();
@@ -235,9 +246,7 @@ where
                             }
                             'k' => {
                                 if self.screen.cursor.y + self.screen.row_offset >= 1 {
-                                    if let Some(line) =
-                                        self.screen.move_and_adjust_cursor(&self.text, -1)
-                                    {
+                                    if let Some(line) = self.screen.move_vert(&self.text, -1) {
                                         line_to_rewrite = Some(line);
                                         write!(self.io.stdout, "{}", termion::scroll::Down(1))
                                             .unwrap();
@@ -246,13 +255,7 @@ where
                                 Mode::Normal
                             }
                             'l' => {
-                                if self.screen.cursor.y + self.screen.row_offset < self.text.len()
-                                    && self.screen.cursor.x + 1
-                                        < self.text[self.screen.cursor.y + self.screen.row_offset]
-                                            .len()
-                                {
-                                    self.screen.cursor.x += 1;
-                                }
+                                self.screen.move_horiz(&self.text, 1);
                                 Mode::Normal
                             }
                             '0' => {
@@ -316,7 +319,7 @@ where
                                     self.screen.cursor.y + self.screen.row_offset + 1,
                                     Vec::new(),
                                 );
-                                self.screen.move_and_adjust_cursor(&self.text, 1);
+                                self.screen.move_vert(&self.text, 1);
                                 flag_rewrite_all = true;
                                 Mode::Insert
                             }
@@ -356,7 +359,10 @@ where
                 },
                 Mode::Insert => match evt {
                     Event::Key(key) => match key {
-                        Key::Esc => Mode::Normal,
+                        Key::Esc => {
+                            self.screen.move_horiz(&self.text, 0);
+                            Mode::Normal
+                        }
                         Key::Char('\n') => {
                             let right_of_cursor_text = self.text
                                 [self.screen.cursor.y + self.screen.row_offset]
@@ -365,7 +371,7 @@ where
                                 self.screen.cursor.y + self.screen.row_offset + 1,
                                 right_of_cursor_text,
                             );
-                            self.screen.move_and_adjust_cursor(&self.text, 1);
+                            self.screen.move_vert(&self.text, 1);
                             self.screen.cursor.x = 0;
                             flag_rewrite_all = true;
                             Mode::Insert
@@ -393,6 +399,13 @@ where
                             'e' => {
                                 self.screen.cursor.x =
                                     self.text[self.screen.cursor.y + self.screen.row_offset].len();
+                                Mode::Insert
+                            }
+                            'h' if self.screen.cursor.x >= 1 => {
+                                self.text[self.screen.cursor.y + self.screen.row_offset]
+                                    .remove(self.screen.cursor.x - 1);
+                                self.screen.cursor.x -= 1;
+                                line_to_rewrite = Some(self.screen.cursor.y);
                                 Mode::Insert
                             }
                             _ => Mode::Insert,
@@ -510,6 +523,10 @@ fn save_to_file(filepath: &String, contents: &Text) -> std::result::Result<(), E
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{stdin, stdout};
+    use termion::input::MouseTerminal;
+    use termion::raw::IntoRawMode;
+    use termion::screen::AlternateScreen;
     #[test]
     fn test_basic_cursor_move() {
         let config = Config {
