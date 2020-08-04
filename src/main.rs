@@ -1,8 +1,7 @@
 extern crate termion;
 
-mod lib;
-use lib::Config;
-use lib::Editor;
+use rim::editor::Editor;
+use rim::util::Config;
 use std::env;
 use std::io::{stdin, stdout};
 use termion::input::MouseTerminal;
